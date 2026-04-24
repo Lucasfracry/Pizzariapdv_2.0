@@ -1,6 +1,6 @@
 body {
   margin: 0;
-  font-family: Arial;
+  font-family: Arial, sans-serif;
   background: #eee;
 }
 
@@ -17,6 +17,12 @@ body {
   background: #34495e;
   color: white;
   cursor: pointer;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.topbar button:hover {
+  background: #4a6a8a;
 }
 
 /* TELAS */
@@ -54,6 +60,10 @@ input, select {
   width: 100%;
   padding: 12px;
   margin-bottom: 10px;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
 }
 
 /* BOTÕES */
@@ -64,7 +74,13 @@ input, select {
   color: white;
   border: none;
   margin-bottom: 15px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: bold;
 }
+
+.btn-meio:hover { background: #d68910; }
 
 .btn-print {
   width: 100%;
@@ -73,7 +89,13 @@ input, select {
   color: white;
   border: none;
   margin-top: 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: bold;
 }
+
+.btn-print:hover { background: #2176ae; }
 
 .btn-clear {
   width: 100%;
@@ -81,9 +103,14 @@ input, select {
   background: #bdc3c7;
   border: none;
   margin-top: 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
 }
 
-/* GRID */
+.btn-clear:hover { background: #a1a9ad; }
+
+/* GRID DE PRODUTOS */
 .grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -99,25 +126,133 @@ input, select {
   border: 1px solid #ddd;
 }
 
-.numero {
-  background: #2c3e50;
+/* CARD DO PDV */
+.item-card {
+  cursor: pointer;
+  padding: 15px;
+  background: #333;
   color: white;
-  padding: 5px;
-  border-radius: 20px;
-  width: 40px;
-  margin: auto;
-  margin-bottom: 5px;
+  border-radius: 8px;
+  border-left: 5px solid #ffc107;
+  transition: background 0.2s;
 }
 
-/* LISTA */
+.item-card:hover {
+  background: #444;
+}
+
+.item-card .item-numero {
+  color: #ffc107;
+  font-size: 16px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* LISTA DO CARRINHO */
 .lista {
   height: 300px;
   overflow-y: auto;
   background: white;
   padding: 10px;
+  border-radius: 6px;
+}
+
+.item-carrinho {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 4px;
+  border-bottom: 1px solid #eee;
+  font-size: 13px;
+  gap: 8px;
+}
+
+.item-carrinho span:first-child {
+  flex: 1;
+}
+
+.btn-remover-item {
+  background: transparent;
+  border: none;
+  color: #e74c3c;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 4px;
+  flex-shrink: 0;
 }
 
 /* FORM */
 .form {
   max-width: 400px;
+}
+
+/* MODAL MEIO A MEIO */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.8);
+  z-index: 9999;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-box {
+  background: #1e1e1e;
+  padding: 30px;
+  border-radius: 12px;
+  border: 2px solid #ffc107;
+  width: 400px;
+  color: white;
+  box-sizing: border-box;
+}
+
+.modal-titulo {
+  margin-top: 0;
+  color: #ffc107;
+  text-align: center;
+  font-size: 20px;
+}
+
+.modal-select {
+  background: #333;
+  color: white;
+  font-size: 16px;
+  border-radius: 5px;
+  border: 1px solid #555;
+  padding: 12px;
+  margin: 8px 0;
+}
+
+.modal-erro {
+  color: #ff4444;
+  text-align: center;
+  font-size: 13px;
+  margin: 4px 0;
+}
+
+.btn-confirmar-meio {
+  width: 100%;
+  background: #28a745;
+  color: white;
+  padding: 18px;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 16px;
+  margin-top: 12px;
+}
+
+.btn-confirmar-meio:hover { background: #218838; }
+
+.btn-cancelar-meio {
+  width: 100%;
+  background: transparent;
+  color: #ff4444;
+  border: none;
+  margin-top: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 8px;
 }
