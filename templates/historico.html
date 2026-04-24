@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Histórico</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="main">
+  <div class="sidebar">
+    <h2>🍕 PDV</h2>
+    <a href="/caixa"><button>💰 Caixa</button></a>
+    <a href="/cadastro"><button>📦 Cadastro</button></a>
+    <a href="/pdv"><button>🛒 PDV</button></a>
+    <a href="/historico"><button class="active">📊 Histórico</button></a>
+    <a href="/logout"><button class="danger">Sair</button></a>
+  </div>
+
+  <div class="content">
+    <h2>📊 Histórico de Caixa</h2>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="alert">{{ messages[0] }}</div>
+      {% endif %}
+    {% endwith %}
+
+    {% if sessions|length == 0 %}
+      <div class="card">
+        <p class="muted">Nenhum caixa registrado ainda.</p>
+      </div>
+    {% endif %}
+
+    {% for cs in sessions %}
+      <div class="card">
+        <div class="split">
+          <div>
+            <h3>Caixa #{{ cs.id }}</h3>
+            <div class="muted">Abertura: {{ cs.opened_at }}</div>
+            <div class="muted">Fechamento: {{ cs.closed_at if cs.closed_at else '— (aberto)' }}</div>
+            <div class="muted">Troco inicial: R$ {{ '%.2f'|format(cs.opening_amount) }}</div>
+          </div>
+          <div class="right">
+            <span class="pill {{ 'pill-green' if cs.status == 'closed' else 'pill-orange' }}">
+              {{ 'Fechado' if cs.status == 'closed' else 'Aberto' }}
+            </span>
+          </div>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi">
+            <div class="muted">Dinheiro</div>
+            <strong>R$ {{ '%.2f'|format(cs.dinheiro) }}</strong>
+          </div>
+          <div class="kpi">
+            <div class="muted">Cartão</div>
+            <strong>R$ {{ '%.2f'|format(cs.cartao) }}</strong>
+          </div>
+          <div class="kpi">
+            <div class="muted">Pix</div>
+            <strong>R$ {{ '%.2f'|format(cs.pix) }}</strong>
+          </div>
+          <div class="kpi total-kpi">
+            <div class="muted">Total Geral</div>
+            <strong>R$ {{ '%.2f'|format(cs.total_geral) }}</strong>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+</body>
+</html>

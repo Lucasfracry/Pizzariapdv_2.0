@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Login</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="login-container">
+  <div class="login-box">
+    <h1>🍕 Pizzaria PDV</h1>
+    <p>Acesse o sistema</p>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}<div class="alert">{{ messages[0] }}</div>{% endif %}
+    {% endwith %}
+
+    <form method="POST">
+      <input name="usuario" placeholder="Usuário" required>
+      <input type="password" name="senha" placeholder="Senha" required>
+      <button type="submit">Entrar</button>
+    </form>
+
+    <div class="hint"><strong>Padrão:</strong> admin / 123</div>
+  </div>
+</div>
+
+</body>
+</html>

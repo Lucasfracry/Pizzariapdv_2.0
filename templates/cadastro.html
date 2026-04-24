@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Cadastro</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="main">
+  <div class="sidebar">
+    <h2>🍕 PDV</h2>
+    <a href="/caixa"><button>💰 Caixa</button></a>
+    <a href="/cadastro"><button class="active">📦 Cadastro</button></a>
+    <a href="/pdv"><button>🛒 PDV</button></a>
+    <a href="/historico"><button>📊 Histórico</button></a>
+    <a href="/logout"><button class="danger">Sair</button></a>
+  </div>
+
+  <div class="content">
+    <h2>📦 Cadastro de Produtos</h2>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}<div class="alert">{{ messages[0] }}</div>{% endif %}
+    {% endwith %}
+
+    <div class="grid">
+
+      <div class="card">
+        <h3>🍕 Cadastrar Pizza (Broto + Grande)</h3>
+        <form method="POST" action="/cadastro/pizza">
+          <input name="name" placeholder="Nome da pizza" required>
+
+          <div class="grid-2" style="margin-top:8px;">
+            <div>
+              <label>Preço Broto</label>
+              <input name="price_broto" placeholder="Ex: 35.00" required>
+            </div>
+            <div>
+              <label>Preço Grande</label>
+              <input name="price_grande" placeholder="Ex: 55.00" required>
+            </div>
+          </div>
+
+          <button type="submit">Salvar Pizza</button>
+        </form>
+
+        <div class="list">
+          <h4>Lista de Pizzas</h4>
+          {% for p in pizzas %}
+            <div class="list-item">
+              <div>
+                <strong>{{ p.name }}</strong>
+                <div class="muted">
+                  Broto: R$ {{ '%.2f'|format(p.price_broto) }} |
+                  Grande: R$ {{ '%.2f'|format(p.price_grande) }}
+                </div>
+              </div>
+              <form method="POST" action="/pizza/{{ p.id }}/delete">
+                <button class="danger small" type="submit">Remover</button>
+              </form>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>🧀 Cadastrar Adicional</h3>
+        <form method="POST" action="/cadastro/adicional">
+          <input name="name" placeholder="Nome do adicional" required>
+          <input name="price" placeholder="Preço (ex: 4.00)" required>
+          <button type="submit">Salvar Adicional</button>
+        </form>
+
+        <div class="list">
+          <h4>Lista de Adicionais</h4>
+          {% for a in adicionais %}
+            <div class="list-item">
+              <div>
+                <strong>{{ a.name }}</strong>
+                <span class="muted">R$ {{ '%.2f'|format(a.price) }}</span>
+              </div>
+              <form method="POST" action="/produto/{{ a.id }}/delete">
+                <button class="danger small" type="submit">Remover</button>
+              </form>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>🥐 Cadastrar Borda</h3>
+        <form method="POST" action="/cadastro/borda">
+          <input name="name" placeholder="Nome da borda" required>
+          <input name="price" placeholder="Preço adicional (ex: 6.00)" required>
+          <button type="submit">Salvar Borda</button>
+        </form>
+
+        <div class="list">
+          <h4>Lista de Bordas</h4>
+          {% for b in bordas %}
+            <div class="list-item">
+              <div>
+                <strong>{{ b.name }}</strong>
+                <span class="muted">R$ {{ '%.2f'|format(b.price) }}</span>
+              </div>
+              <form method="POST" action="/produto/{{ b.id }}/delete">
+                <button class="danger small" type="submit">Remover</button>
+              </form>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>🥤 Cadastrar Bebida</h3>
+        <form method="POST" action="/cadastro/bebida">
+          <input name="name" placeholder="Nome da bebida" required>
+          <select name="drink_type" required>
+            <option value="refrigerante">Refrigerante</option>
+            <option value="vinho">Vinho</option>
+            <option value="cerveja">Cerveja</option>
+          </select>
+          <input name="price" placeholder="Preço (ex: 8.00)" required>
+          <button type="submit">Salvar Bebida</button>
+        </form>
+
+        <div class="list">
+          <h4>Lista de Bebidas</h4>
+          {% for d in bebidas %}
+            <div class="list-item">
+              <div>
+                <strong>{{ d.name }}</strong>
+                <span class="pill">{{ d.drink_type }}</span>
+                <span class="muted">R$ {{ '%.2f'|format(d.price) }}</span>
+              </div>
+              <form method="POST" action="/produto/{{ d.id }}/delete">
+                <button class="danger small" type="submit">Remover</button>
+              </form>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

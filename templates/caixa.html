@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Caixa</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="main">
+  <div class="sidebar">
+    <h2>🍕 PDV</h2>
+    <a href="/caixa"><button class="active">💰 Caixa</button></a>
+    <a href="/cadastro"><button>📦 Cadastro</button></a>
+    <a href="/pdv"><button>🛒 PDV</button></a>
+    <a href="/historico"><button>📊 Histórico</button></a>
+    <a href="/logout"><button class="danger">Sair</button></a>
+  </div>
+
+  <div class="content">
+    <h2>💰 Abertura / Fechamento de Caixa</h2>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="alert">{{ messages[0] }}</div>
+      {% endif %}
+    {% endwith %}
+
+    {% if not open_cash %}
+      <form class="card" method="POST" action="/abrir_caixa">
+        <label>Valor inicial (troco)</label>
+        <input type="number" step="0.01" name="valor" placeholder="Ex: 100,00" required>
+        <div class="row">
+          <div class="muted">Data/Hora: automática ao abrir</div>
+        </div>
+        <button type="submit">Abrir Caixa</button>
+      </form>
+    {% else %}
+      <div class="card success">
+        <p><strong>✅ Caixa aberto</strong></p>
+        <p class="muted">Aberto em: {{ open_cash.opened_at }}</p>
+        <p class="muted">Valor inicial: R$ {{ '%.2f'|format(open_cash.opening_amount) }}</p>
+
+        <form method="POST" action="/fechar_caixa">
+          <button type="submit" class="danger">Fechar Caixa</button>
+        </form>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+</body>
+</html>

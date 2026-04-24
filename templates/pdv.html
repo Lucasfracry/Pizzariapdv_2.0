@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>PDV</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="main">
+  <div class="sidebar">
+    <h2>🍕 PDV</h2>
+    <a href="/caixa"><button>💰 Caixa</button></a>
+    <a href="/cadastro"><button>📦 Cadastro</button></a>
+    <a href="/pdv"><button class="active">🛒 PDV</button></a>
+    <a href="/historico"><button>📊 Histórico</button></a>
+    <a href="/logout"><button class="danger">Sair</button></a>
+  </div>
+
+  <div class="content">
+    <h2>🛒 PDV - Vendas</h2>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}<div class="alert">{{ messages[0] }}</div>{% endif %}
+    {% endwith %}
+
+    {% if not open_cash %}
+      <div class="card danger-outline">
+        <p><strong>⚠ Caixa fechado.</strong> Abra o caixa para usar o PDV.</p>
+        <a href="/caixa"><button>Abrir Caixa</button></a>
+      </div>
+    {% endif %}
+
+    <div class="grid-2">
+
+      <!-- ADD PIZZA -->
+      <div class="card">
+        <h3>🍕 Adicionar Pizza</h3>
+
+        <form method="POST" action="/pdv/add_pizza">
+
+          <label>Tamanho</label>
+          <select name="size" required>
+            <option value="broto">Broto</option>
+            <option value="grande">Grande</option>
+          </select>
+
+          <!-- Toggle Meio a Meio -->
+          <div class="toggle-line">
+            <span class="toggle-label">🍕 Meio a meio</span>
+
+            <label class="switch">
+              <input id="chkMeio" type="checkbox">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <input type="hidden" name="mode" id="modeField" value="inteira">
+
+          <label>Sabor 1</label>
+          <select name="pizza_id_1" required>
+            {% for p in pizzas %}
+              <option value="{{ p.id }}">{{ p.name }}</option>
+            {% endfor %}
+          </select>
+
+          <div id="meioBox" class="meio-box" style="display:none;">
+            <label>Sabor 2</label>
+            <select name="pizza_id_2">
+              {% for p in pizzas %}
+                <option value="{{ p.id }}">{{ p.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <label>Borda</label>
+          <select name="borda_id" required>
+            {% for b in bordas %}
+              <option value="{{ b.id }}">{{ b.name }} - R$ {{ '%.2f'|format(b.price) }}</option>
+            {% endfor %}
+          </select>
+
+          <label>Adicionais (pode selecionar vários)</label>
+          <select name="adicionais_ids" multiple size="6">
+            {% for a in adicionais %}
+              <option value="{{ a.id }}">{{ a.name }} - R$ {{ '%.2f'|format(a.price) }}</option>
+            {% endfor %}
+          </select>
+
+          <label>Quantidade</label>
+          <input type="number" name="qty" value="1" min="1" required>
+
+          <button type="submit" {% if not open_cash %}disabled{% endif %}>Adicionar Pizza</button>
+        </form>
+      </div>
+
+      <!-- ADD BEBIDA -->
+      <div class="card">
+        <h3>🥤 Adicionar Bebida</h3>
+        <form method="POST" action="/pdv/add_bebida">
+          <label>Bebida</label>
+          <select name="bebida_id" required>
+            {% for d in bebidas %}
+              <option value="{{ d.id }}">{{ d.name }} ({{ d.drink_type }}) - R$ {{ '%.2f'|format(d.price) }}</option>
+            {% endfor %}
+          </select>
+
+          <label>Quantidade</label>
+          <input type="number" name="qty" value="1" min="1" required>
+
+          <button type="submit" {% if not open_cash %}disabled{% endif %}>Adicionar Bebida</button>
+        </form>
+      </div>
+
+      <!-- CARRINHO -->
+      <div class="card wide">
+        <h3>🧾 Carrinho</h3>
+
+        {% if cart_items|length == 0 %}
+          <p class="muted">Nenhum item no pedido.</p>
+        {% else %}
+          <div class="cart">
+            {% for it in cart_items %}
+              <div class="cart-item">
+                <div>
+                  <strong>{{ it.description }}</strong>
+                  <div class="muted">Qtd: {{ it.qty }} | Unit: R$ {{ '%.2f'|format(it.unit_price) }}</div>
+                </div>
+                <div class="right">
+                  <div class="price">R$ {{ '%.2f'|format(it.total_price) }}</div>
+                  <form method="POST" action="/pdv/remove_item/{{ loop.index0 }}">
+                    <button class="danger small" type="submit" {% if not open_cash %}disabled{% endif %}>Remover</button>
+                  </form>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+
+          <div class="total">
+            <span>Total</span>
+            <strong>R$ {{ '%.2f'|format(cart_total) }}</strong>
+          </div>
+
+          <form method="POST" action="/pdv/cancelar" class="mt">
+            <button class="danger" type="submit" {% if not open_cash %}disabled{% endif %}>Cancelar Pedido</button>
+          </form>
+        {% endif %}
+      </div>
+
+      <!-- FINALIZAR -->
+      <div class="card wide">
+        <h3>✅ Finalizar Venda</h3>
+
+        <form method="POST" action="/pdv/finalizar" id="finalizarForm">
+
+          <label>Tipo de venda</label>
+          <select name="sale_type" id="saleType" required>
+            <option value="delivery">Delivery</option>
+            <option value="balcao">Balcão</option>
+            <option value="mesa">Mesa</option>
+          </select>
+
+          <label>Nome do cliente</label>
+          <input name="customer_name" id="customerName" placeholder="Ex: João">
+
+          <label>Endereço (Delivery)</label>
+          <input name="address" id="address" placeholder="Rua / Número / Bairro">
+
+          <label>Telefone (Delivery)</label>
+          <input name="phone" id="phone" placeholder="(DDD) 99999-9999">
+
+          <label>Número da mesa (Mesa)</label>
+          <input name="table_number" id="tableNumber" placeholder="Ex: 12">
+
+          <label>Pagamento</label>
+          <select name="payment_method" required>
+            <option value="dinheiro">Dinheiro</option>
+            <option value="cartao">Cartão</option>
+            <option value="pix">Pix</option>
+          </select>
+
+          <button class="success" type="submit" {% if not open_cash %}disabled{% endif %}>
+            Finalizar Venda
+          </button>
+        </form>
+
+        <p class="muted mt-sm">
+          Delivery: Nome+Endereço+Telefone | Balcão: Nome | Mesa: Nº Mesa
+        </p>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  // ===== Meio a meio =====
+  const chk = document.getElementById("chkMeio");
+  const box = document.getElementById("meioBox");
+  const mode = document.getElementById("modeField");
+
+  function setMeioUI(isMeio){
+    if (isMeio) {
+      box.style.display = "block";
+      mode.value = "meio";
+    } else {
+      box.style.display = "none";
+      mode.value = "inteira";
+    }
+  }
+  chk.addEventListener("change", () => setMeioUI(chk.checked));
+
+  // ===== Regras obrigatórias por tipo =====
+  const saleType = document.getElementById("saleType");
+  const customerName = document.getElementById("customerName");
+  const address = document.getElementById("address");
+  const phone = document.getElementById("phone");
+  const tableNumber = document.getElementById("tableNumber");
+
+  function applyRules() {
+    const type = saleType.value;
+
+    // limpa required de tudo
+    customerName.required = false;
+    address.required = false;
+    phone.required = false;
+    tableNumber.required = false;
+
+    // aplica conforme tipo
+    if (type === "delivery") {
+      customerName.required = true;
+      address.required = true;
+      phone.required = true;
+      tableNumber.value = ""; // limpa mesa
+    }
+
+    if (type === "balcao") {
+      customerName.required = true;
+      address.value = "";
+      phone.value = "";
+      tableNumber.value = "";
+    }
+
+    if (type === "mesa") {
+      tableNumber.required = true;
+      address.value = "";
+      phone.value = "";
+      // nome fica opcional na mesa
+    }
+  }
+
+  saleType.addEventListener("change", applyRules);
+  applyRules(); // aplica ao carregar
+</script>
+
+</body>
+</html>

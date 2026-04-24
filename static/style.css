@@ -1,0 +1,221 @@
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Segoe UI,system-ui,Arial,sans-serif;background:#1e1f26;color:#fff}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer}
+.muted{color:#a9a9b3;font-size:.92rem}
+.mt{margin-top:12px}
+.mt-sm{margin-top:8px}
+.right{text-align:right}
+.price{font-weight:700}
+.hint{margin-top:12px;color:#a9a9b3;font-size:.9rem}
+
+.alert{
+  background:#2c2f3a;
+  border-left:4px solid #ff7a00;
+  padding:10px 12px;
+  border-radius:8px;
+  margin:12px 0;
+  color:#fff;
+}
+
+/* LOGIN */
+.login-container{
+  height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  background:linear-gradient(135deg,#1e1f26,#2c2f3a)
+}
+.login-box{
+  width:340px;
+  background:#2c2f3a;
+  padding:28px;
+  border-radius:14px;
+  box-shadow:0 0 25px rgba(0,0,0,.4);
+  text-align:center
+}
+.login-box h1{margin-bottom:6px}
+.login-box p{margin-bottom:16px;color:#a9a9b3}
+
+/* LAYOUT */
+.main{display:flex;min-height:100vh}
+.sidebar{
+  width:240px;
+  background:#2c2f3a;
+  padding:18px;
+  box-shadow:2px 0 15px rgba(0,0,0,.35)
+}
+.sidebar h2{text-align:center;margin-bottom:18px}
+.sidebar button{
+  width:100%;
+  border:none;
+  border-radius:10px;
+  padding:12px;
+  margin-bottom:10px;
+  background:#3a3d4a;
+  color:#fff;
+  transition:.18s
+}
+.sidebar button:hover{background:#ff7a00}
+.sidebar .active{background:#ff7a00}
+.content{flex:1;padding:22px}
+
+/* COMPONENTES */
+h2{margin-bottom:14px}
+h3{margin-bottom:10px}
+h4{margin:12px 0 8px 0}
+
+input,select{
+  width:100%;
+  border:none;
+  border-radius:10px;
+  padding:11px;
+  background:#3a3d4a;
+  color:#fff;
+  margin:8px 0
+}
+select[multiple]{padding:10px}
+label{display:block;margin-top:6px;color:#cfd0d6;font-size:.95rem}
+
+button{
+  width:100%;
+  border:none;
+  border-radius:10px;
+  padding:11px;
+  background:#ff7a00;
+  color:#fff;
+  font-weight:600;
+  transition:.18s
+}
+button:hover{filter:brightness(1.07)}
+button:disabled{opacity:.45;cursor:not-allowed}
+
+.small{padding:8px 10px;border-radius:10px;width:auto}
+.success{background:#28a745 !important}
+.danger{background:#dc3545 !important}
+.danger-outline{border:1px solid rgba(220,53,69,.6);}
+
+.card{
+  background:#2c2f3a;
+  padding:16px;
+  border-radius:14px;
+  box-shadow:0 8px 18px rgba(0,0,0,.22);
+  margin-bottom:14px
+}
+.card.success{border-left:4px solid #28a745}
+
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:6px}
+
+.grid{display:flex;flex-wrap:wrap;gap:14px}
+.grid > .card{flex:1;min-width:280px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.wide{grid-column:1 / -1}
+
+.list{margin-top:12px}
+.list-item{
+  display:flex;justify-content:space-between;align-items:center;
+  background:#262833;border-radius:12px;padding:10px;margin:8px 0
+}
+.pill{
+  display:inline-block;
+  padding:3px 10px;
+  border-radius:999px;
+  background:#3a3d4a;
+  font-size:.8rem;
+  margin:0 8px
+}
+
+.cart{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.cart-item{
+  display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+  background:#262833;border-radius:12px;padding:12px
+}
+.total{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08)
+}
+
+/* ===== Toggle bonito (Meio a meio) ===== */
+.toggle-line{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  background:#262833;
+  border:1px solid rgba(255,255,255,.08);
+  padding:12px 14px;
+  border-radius:14px;
+  margin:10px 0 8px;
+}
+
+.toggle-label{
+  font-weight:700;
+  font-size:1.02rem;
+  letter-spacing:.2px;
+}
+
+/* Switch */
+.switch{
+  position:relative;
+  display:inline-block;
+  width:62px;
+  height:34px;
+  flex:0 0 auto;
+}
+
+.switch input{
+  opacity:0;
+  width:0;
+  height:0;
+}
+
+.slider{
+  position:absolute;
+  cursor:pointer;
+  top:0; left:0; right:0; bottom:0;
+  background:#3a3d4a;
+  transition:.2s;
+  border-radius:999px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+}
+
+.slider:before{
+  position:absolute;
+  content:"";
+  height:26px;
+  width:26px;
+  left:4px;
+  top:4px;
+  background:white;
+  transition:.2s;
+  border-radius:50%;
+  box-shadow:0 6px 12px rgba(0,0,0,.25);
+}
+
+/* ON */
+.switch input:checked + .slider{
+  background:#ff7a00;
+}
+
+.switch input:checked + .slider:before{
+  transform:translateX(28px);
+}
+
+/* Meio box (Sabor 2) */
+.meio-box{
+  margin-top:6px;
+  padding:10px 12px;
+  background:#262833;
+  border-radius:14px;
+  border:1px dashed rgba(255,255,255,.12);
+}
+
+@media (max-width: 980px){
+  .grid-2{grid-template-columns:1fr}
+  .sidebar{width:220px}
+}
+@media (max-width: 720px){
+  .main{flex-direction:column}
+  .sidebar{width:100%;display:flex;gap:10px;overflow:auto}
+  .sidebar button{min-width:160px}
+}
