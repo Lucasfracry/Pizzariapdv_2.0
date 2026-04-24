@@ -1,20 +1,14 @@
 import { getData, setData } from './db.js';
 
-console.log("UI.JS CARREGADO - Sistema de Pizzaria Ativo");
-
 // --- FUNÇÃO PARA SALVAR PRODUTO ---
 export function salvarProduto() {
-    console.log("Tentando salvar produto...");
     const nomeEl = document.getElementById("nome");
     const precoEl = document.getElementById("preco");
     const tipoEl = document.getElementById("tipo");
 
-    if (!nomeEl || !precoEl) {
-        console.error("Elementos de input não encontrados no HTML!");
-        return;
-    }
+    if (!nomeEl || !precoEl) return;
 
-    const nome = nomeEl.value;
+    const nome = nomeEl.value.trim();
     const preco = Number(precoEl.value);
     const tipo = tipoEl ? tipoEl.value : "pizza";
 
@@ -23,20 +17,20 @@ export function salvarProduto() {
         return;
     }
 
-    const novoProduto = { tipo, nome, preco };
+    const produto = { tipo, nome, preco };
     const produtos = getData("produtos") || [];
-    produtos.push(novoProduto);
+    produtos.push(produto);
     setData("produtos", produtos);
 
-    // Limpar campos
     nomeEl.value = "";
     precoEl.value = "";
 
-    console.log("Produto salvo:", novoProduto);
     carregarListaProdutos();
+    // Se existir a função carregarProdutos (no app.js ou ui.js), chama ela
+    if (window.carregarProdutos) window.carregarProdutos();
 }
 
-// --- FUNÇÃO PARA CARREGAR A LISTA NO FRONT ---
+// --- FUNÇÃO PARA CARREGAR A LISTA NO MENU LATERAL ---
 export function carregarListaProdutos() {
     const lista = document.getElementById("listaProdutos");
     if (!lista) return;
@@ -45,56 +39,57 @@ export function carregarListaProdutos() {
     lista.innerHTML = "";
 
     produtos.forEach(p => {
-        const div = document.createElement("div");
-        div.className = "item";
-        div.innerHTML = `<strong>${p.nome}</strong> - R$ ${p.preco.toFixed(2)}`;
-        lista.appendChild(div);
+        const item = document.createElement("div");
+        item.className = "item";
+        item.innerHTML = `<strong>${p.nome}</strong> - R$ ${p.preco.toFixed(2)}`;
+        lista.appendChild(item);
     });
 }
 
-// --- FUNÇÃO MEIO A MEIO (SEM ALERT/PROMPT DELIRANTE) ---
+// --- LÓGICA MEIO A MEIO PROFISSIONAL ---
 export function selecionarMeioAMeio() {
-    console.log("Botão Meio a Meio clicado");
     const produtos = getData("produtos") || [];
     const pizzas = produtos.filter(p => p.tipo === "pizza" || p.nome.toLowerCase().includes("pizza"));
 
     if (pizzas.length < 2) {
-        alert("Cadastre ao menos 2 pizzas para usar o Meio a Meio!");
+        alert("Cadastre pelo menos 2 pizzas para fazer Meio a Meio!");
         return;
     }
 
-    // Usando prompt apenas para validar a lógica; se funcionar, faremos o modal.
-    const s1 = prompt("Digite o nome exato da PRIMEIRA pizza:\nEx: " + pizzas[0].nome);
-    const s2 = prompt("Digite o nome exato da SEGUNDA pizza:");
+    // Listagem simples para o prompt
+    const menu = pizzas.map((p, i) => `${i + 1}. ${p.nome}`).join("\n");
+    const s1 = prompt("Digite o NOME do primeiro sabor:\n\n" + menu);
+    const s2 = prompt("Digite o NOME do segundo sabor:");
 
     const p1 = pizzas.find(p => p.nome.toLowerCase() === s1?.toLowerCase());
     const p2 = pizzas.find(p => p.nome.toLowerCase() === s2?.toLowerCase());
 
     if (p1 && p2) {
         const precoFinal = Math.max(p1.preco, p2.preco);
-        const itemCarrinho = {
+        const itemMisto = {
             nome: `1/2 ${p1.nome} + 1/2 ${p2.nome}`,
             preco: precoFinal,
             quantidade: 1
         };
 
         const carrinho = getData("carrinho") || [];
-        carrinho.push(itemCarrinho);
+        carrinho.push(itemMisto);
         setData("carrinho", carrinho);
         
         alert("Pizza Meio a Meio adicionada!");
+        if (window.carregarProdutos) window.carregarProdutos();
     } else {
-        alert("Um ou mais sabores não foram encontrados. Digite o nome exatamente como cadastrou.");
+        alert("Sabor não encontrado! Digite o nome exatamente como cadastrado.");
     }
 }
 
-// --- VINCULANDO AO WINDOW PARA O HTML ENXERGAR ---
-// Isso é vital para que o onclick="salvarProduto()" funcione!
+// ============================================================
+// SOLUÇÃO DO PROBLEMA: VINCULANDO AO WINDOW
+// Isso faz o HTML "enxergar" as funções dentro do onclick
+// ============================================================
 window.salvarProduto = salvarProduto;
 window.selecionarMeioAMeio = selecionarMeioAMeio;
 window.carregarListaProdutos = carregarListaProdutos;
 
-// Inicialização
-document.addEventListener("DOMContentLoaded", () => {
-    carregarListaProdutos();
-});
+// Inicialização ao carregar a página
+window.onload = carregarListaProdutos;
