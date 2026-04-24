@@ -1,0 +1,123 @@
+body {
+  margin: 0;
+  font-family: Arial;
+  background: #eee;
+}
+
+/* TOPBAR */
+.topbar {
+  background: #2c3e50;
+  padding: 10px;
+}
+
+.topbar button {
+  padding: 10px 15px;
+  margin-right: 10px;
+  border: none;
+  background: #34495e;
+  color: white;
+  cursor: pointer;
+}
+
+/* TELAS */
+.tela {
+  display: none;
+}
+
+.ativa {
+  display: flex;
+}
+
+.container {
+  height: calc(100vh - 50px);
+}
+
+/* CARDAPIO */
+.cardapio {
+  width: 70%;
+  padding: 20px;
+  background: #f8f8f8;
+  overflow-y: auto;
+  border-top: 5px solid #2ecc71;
+}
+
+/* PEDIDO */
+.pedido {
+  width: 30%;
+  padding: 20px;
+  background: #f2f2f2;
+  border-top: 5px solid #e74c3c;
+}
+
+/* INPUT */
+input, select {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+/* BOTÕES */
+.btn-meio {
+  width: 100%;
+  padding: 15px;
+  background: #f39c12;
+  color: white;
+  border: none;
+  margin-bottom: 15px;
+}
+
+.btn-print {
+  width: 100%;
+  padding: 15px;
+  background: #3498db;
+  color: white;
+  border: none;
+  margin-top: 10px;
+}
+
+.btn-clear {
+  width: 100%;
+  padding: 15px;
+  background: #bdc3c7;
+  border: none;
+  margin-top: 10px;
+}
+
+/* GRID */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.item {
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
+  text-align: center;
+  cursor: pointer;
+  border: 1px solid #ddd;
+}
+
+.numero {
+  background: #2c3e50;
+  color: white;
+  padding: 5px;
+  border-radius: 20px;
+  width: 40px;
+  margin: auto;
+  margin-bottom: 5px;
+}
+
+/* LISTA */
+.lista {
+  height: 300px;
+  overflow-y: auto;
+  background: white;
+  padding: 10px;
+}
+
+/* FORM */
+.form {
+  max-width: 400px;
+}
