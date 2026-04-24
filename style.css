@@ -1,0 +1,194 @@
+:root {
+    --primary: #e63946;
+    --dark: #1d3557;
+    --light: #f1faee;
+    --accent: #457b9d;
+    --success: #2a9d8f;
+    --gray: #ddd;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+body {
+    background-color: #f0f2f5;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Telas */
+.screen {
+    display: none;
+    height: 100vh;
+}
+
+.screen.active {
+    display: flex;
+}
+
+/* Login */
+#login-screen {
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, var(--dark), var(--primary));
+}
+
+.login-container {
+    background: white;
+    padding: 2.5rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    width: 350px;
+    text-align: center;
+}
+
+.login-container h2 { margin-bottom: 1.5rem; color: var(--dark); }
+
+/* Sidebar */
+.sidebar {
+    width: 260px;
+    background-color: var(--dark);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem 0;
+}
+
+.sidebar-header {
+    text-align: center;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.nav-tabs {
+    list-style: none;
+    margin-top: 1rem;
+    flex-grow: 1;
+}
+
+.tab-link {
+    padding: 1rem 1.5rem;
+    cursor: pointer;
+    transition: 0.3s;
+    border-left: 4px solid transparent;
+}
+
+.tab-link:hover, .tab-link.active {
+    background: rgba(255,255,255,0.1);
+    border-left: 4px solid var(--primary);
+}
+
+.btn-logout {
+    margin: 1rem;
+    padding: 0.8rem;
+    background: transparent;
+    border: 1px solid white;
+    color: white;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+/* Conteúdo Principal */
+.content {
+    flex-grow: 1;
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    margin-top: 1rem;
+}
+
+/* Formulários */
+.input-group {
+    margin-bottom: 1rem;
+    text-align: left;
+}
+
+input, select {
+    width: 100%;
+    padding: 0.8rem;
+    margin-top: 0.4rem;
+    border: 1px solid var(--gray);
+    border-radius: 5px;
+}
+
+.btn-main {
+    width: 100%;
+    padding: 0.8rem;
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    margin-top: 1rem;
+}
+
+.btn-main.green { background-color: var(--success); }
+.btn-main.red { background-color: #d62828; }
+
+/* PDV Layout */
+.pdv-container {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 1.5rem;
+}
+
+.item-select {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.btn-add {
+    background: var(--dark);
+    color: white;
+    border: none;
+    padding: 0 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.resumo-pedido {
+    min-height: 150px;
+    border: 1px dashed var(--gray);
+    margin-bottom: 1rem;
+    padding: 1rem;
+}
+
+/* Tabelas */
+.table-historico {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.table-historico th, .table-historico td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--gray);
+}
+
+@media (max-width: 768px) {
+    .pdv-container { grid-template-columns: 1fr; }
+    .sidebar { width: 70px; }
+    .sidebar h3, .tab-link { font-size: 0; }
+    .tab-link:after { content: '•'; font-size: 20px; }
+}
