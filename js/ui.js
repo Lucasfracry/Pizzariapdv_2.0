@@ -1,189 +1,100 @@
-import { getData, setData } from './db.js'
-import { add, get, limpar, total } from './carrinho.js'
+import { getData, setData } from './db.js';
 
-let modoMeio = false
-let primeiraPizza = null
+console.log("UI.JS CARREGADO - Sistema de Pizzaria Ativo");
 
-/* ================= TELA ================= */
-export function mostrarTela(tela) {
-  document.querySelectorAll('.tela').forEach(t => t.classList.remove('ativa'))
-  document.getElementById(tela).classList.add('ativa')
-
-  if (tela === "cadastro") {
-    carregarListaProdutos()
-    atualizarFormulario()
-  }
-}
-
-/* ================= MEIO A MEIO ================= */
-export function addMeioMeio() {
-  modoMeio = true
-  primeiraPizza = null
-
-  alert("Selecione o PRIMEIRO sabor")
-}
-
-/* ================= PRODUTOS ================= */
-function carregarProdutos() {
-  const produtos = getData("produtos")
-  const c = document.getElementById("produtos")
-  c.innerHTML = ""
-
-  produtos.forEach(p => {
-    if (p.tipo === "pizza") {
-      c.innerHTML += `
-        <div class="item" onclick='addProduto(${JSON.stringify(p)})'>
-          <div class="numero">${p.numero}</div>
-          <div>${p.nome}</div>
-        </div>
-      `
-    }
-  })
-}
-
-/* ================= CLIQUE PRODUTO ================= */
-export function addProduto(p) {
-
-  // MODO MEIO A MEIO
-  if (modoMeio) {
-
-    if (!primeiraPizza) {
-      primeiraPizza = p
-      alert("Agora selecione o SEGUNDO sabor")
-      return
-    }
-
-    // segunda pizza
-    const preco = Math.max(
-      primeiraPizza.precoGrande,
-      p.precoGrande
-    )
-
-    add({
-      meio: true,
-      sabores: [primeiraPizza, p],
-      preco
-    })
-
-    modoMeio = false
-    primeiraPizza = null
-
-    render()
-    return
-  }
-
-  // NORMAL
-  const preco = p.precoGrande || p.preco
-  add({ ...p, preco })
-  render()
-}
-
-/* ================= DIGITAR NUMERO ================= */
-document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("buscaNumero").addEventListener("keypress", (e) => {
-    if (e.key === "Enter") {
-      const num = e.target.value
-      const p = getData("produtos").find(x => x.numero == num)
-      if (p) addProduto(p)
-      e.target.value = ""
-    }
-  })
-})
-
-/* ================= RENDER ================= */
-function render() {
-  const lista = document.getElementById("lista")
-  lista.innerHTML = ""
-
-  get().forEach(i => {
-    let nome = i.meio
-      ? `1/2 ${i.sabores[0].nome} / 1/2 ${i.sabores[1].nome}`
-      : `${i.numero || ""} ${i.nome}`
-
-    lista.innerHTML += `<div>${nome} - R$${i.preco}</div>`
-  })
-
-  document.getElementById("total").innerText =
-    "R$ " + total().toFixed(2)
-}
-
-/* ================= PEDIDO ================= */
-export function finalizarPedido() {
-  window.print()
-  limpar()
-  render()
-}
-
-export function limparCarrinho() {
-  limpar()
-  render()
-}
-
-/* ================= CADASTRO ================= */
-function atualizarFormulario() {
-  const tipo = document.getElementById("tipo").value
-
-  const numero = document.getElementById("numero")
-  const precoGrande = document.getElementById("precoGrande")
-  const precoBroto = document.getElementById("precoBroto")
-  const preco = document.getElementById("preco")
-
-  if (tipo === "pizza") {
-    numero.style.display = "block"
-    precoGrande.style.display = "block"
-    precoBroto.style.display = "block"
-    preco.style.display = "none"
-  } else {
-    numero.style.display = "none"
-    precoGrande.style.display = "none"
-    precoBroto.style.display = "none"
-    preco.style.display = "block"
-  }
-}
-
+// --- FUNÇÃO PARA SALVAR PRODUTO ---
 export function salvarProduto() {
-  const produtos = getData("produtos")
-  const tipo = document.getElementById("tipo").value
+    console.log("Tentando salvar produto...");
+    const nomeEl = document.getElementById("nome");
+    const precoEl = document.getElementById("preco");
+    const tipoEl = document.getElementById("tipo");
 
-  let produto
-
-  if (tipo === "pizza") {
-    produto = {
-      tipo,
-      numero: document.getElementById("numero").value,
-      nome: document.getElementById("nome").value,
-      precoGrande: Number(document.getElementById("precoGrande").value),
-      precoBroto: Number(document.getElementById("precoBroto").value)
+    if (!nomeEl || !precoEl) {
+        console.error("Elementos de input não encontrados no HTML!");
+        return;
     }
-  } else {
-    produto = {
-      tipo,
-      nome: document.getElementById("nome").value,
-      preco: Number(document.getElementById("preco").value)
+
+    const nome = nomeEl.value;
+    const preco = Number(precoEl.value);
+    const tipo = tipoEl ? tipoEl.value : "pizza";
+
+    if (!nome || !preco) {
+        alert("Preencha o nome e o preço corretamente!");
+        return;
     }
-  }
 
-  produtos.push(produto)
-  setData("produtos", produtos)
+    const novoProduto = { tipo, nome, preco };
+    const produtos = getData("produtos") || [];
+    produtos.push(novoProduto);
+    setData("produtos", produtos);
 
-  carregarListaProdutos()
-  carregarProdutos()
+    // Limpar campos
+    nomeEl.value = "";
+    precoEl.value = "";
+
+    console.log("Produto salvo:", novoProduto);
+    carregarListaProdutos();
 }
 
-function carregarListaProdutos() {
-  const lista = document.getElementById("listaProdutos")
-  const produtos = getData("produtos")
+// --- FUNÇÃO PARA CARREGAR A LISTA NO FRONT ---
+export function carregarListaProdutos() {
+    const lista = document.getElementById("listaProdutos");
+    if (!lista) return;
 
-  lista.innerHTML = ""
+    const produtos = getData("produtos") || [];
+    lista.innerHTML = "";
 
-  produtos.forEach(p => {
-    lista.innerHTML += `
-      <div class="item">
-        ${p.numero ? p.numero + " - " : ""}${p.nome}
-      </div>
-    `
-  })
+    produtos.forEach(p => {
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `<strong>${p.nome}</strong> - R$ ${p.preco.toFixed(2)}`;
+        lista.appendChild(div);
+    });
 }
 
-/* INIT */
-window.onload = carregarProdutos
+// --- FUNÇÃO MEIO A MEIO (SEM ALERT/PROMPT DELIRANTE) ---
+export function selecionarMeioAMeio() {
+    console.log("Botão Meio a Meio clicado");
+    const produtos = getData("produtos") || [];
+    const pizzas = produtos.filter(p => p.tipo === "pizza" || p.nome.toLowerCase().includes("pizza"));
+
+    if (pizzas.length < 2) {
+        alert("Cadastre ao menos 2 pizzas para usar o Meio a Meio!");
+        return;
+    }
+
+    // Usando prompt apenas para validar a lógica; se funcionar, faremos o modal.
+    const s1 = prompt("Digite o nome exato da PRIMEIRA pizza:\nEx: " + pizzas[0].nome);
+    const s2 = prompt("Digite o nome exato da SEGUNDA pizza:");
+
+    const p1 = pizzas.find(p => p.nome.toLowerCase() === s1?.toLowerCase());
+    const p2 = pizzas.find(p => p.nome.toLowerCase() === s2?.toLowerCase());
+
+    if (p1 && p2) {
+        const precoFinal = Math.max(p1.preco, p2.preco);
+        const itemCarrinho = {
+            nome: `1/2 ${p1.nome} + 1/2 ${p2.nome}`,
+            preco: precoFinal,
+            quantidade: 1
+        };
+
+        const carrinho = getData("carrinho") || [];
+        carrinho.push(itemCarrinho);
+        setData("carrinho", carrinho);
+        
+        alert("Pizza Meio a Meio adicionada!");
+    } else {
+        alert("Um ou mais sabores não foram encontrados. Digite o nome exatamente como cadastrou.");
+    }
+}
+
+// --- VINCULANDO AO WINDOW PARA O HTML ENXERGAR ---
+// Isso é vital para que o onclick="salvarProduto()" funcione!
+window.salvarProduto = salvarProduto;
+window.selecionarMeioAMeio = selecionarMeioAMeio;
+window.carregarListaProdutos = carregarListaProdutos;
+
+// Inicialização
+document.addEventListener("DOMContentLoaded", () => {
+    carregarListaProdutos();
+});
