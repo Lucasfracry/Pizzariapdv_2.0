@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PDV Pizzaria</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="app">
+
+    <aside class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">🍕</div>
+        <div>
+          <h1>PDV Pizzaria</h1>
+          <span>Sistema local</span>
+        </div>
+      </div>
+
+      <nav class="menu">
+        <button class="menu-btn active" data-page="pdv">PDV</button>
+        <button class="menu-btn" data-page="pedidos">Pedidos</button>
+        <button class="menu-btn" data-page="cardapio">Cardápio</button>
+        <button class="menu-btn" data-page="relatorio">Relatório</button>
+        <button class="menu-btn" data-page="config">Configurações</button>
+      </nav>
+    </aside>
+
+    <main class="main">
+
+      <header class="topbar">
+        <div>
+          <h2 id="pageTitle">PDV</h2>
+          <p id="pageSubtitle">Escolha o tipo de atendimento</p>
+        </div>
+
+        <div class="status-box">
+          <span>Caixa</span>
+          <strong id="cashStatus">Aberto</strong>
+        </div>
+      </header>
+
+      <section id="toast" class="toast"></section>
+
+      <!-- PDV -->
+      <section class="page active" id="page-pdv">
+
+        <div id="modeSelection" class="mode-grid">
+          <button class="mode-card" data-mode="delivery">
+            <span class="mode-icon">🛵</span>
+            <strong>Delivery</strong>
+            <small>Nome, telefone, endereço e pedido</small>
+          </button>
+
+          <button class="mode-card" data-mode="salao">
+            <span class="mode-icon">🍽️</span>
+            <strong>Salão</strong>
+            <small>Comandas abertas por mesa</small>
+          </button>
+
+          <button class="mode-card" data-mode="balcao">
+            <span class="mode-icon">🧾</span>
+            <strong>Balcão</strong>
+            <small>Nome do cliente e pedido rápido</small>
+          </button>
+        </div>
+
+        <div id="orderArea" class="order-area hidden">
+
+          <div class="order-header">
+            <div>
+              <button id="backToModes" class="btn ghost">← Voltar</button>
+              <h3 id="currentModeTitle">Novo pedido</h3>
+            </div>
+
+            <div class="total-pill">
+              Total: <strong id="cartTotal">R$ 0,00</strong>
+            </div>
+          </div>
+
+          <div class="grid-2">
+
+            <div class="panel">
+              <h4>Dados do atendimento</h4>
+
+              <div id="deliveryFields" class="form-area hidden">
+                <label>Nome do cliente</label>
+                <input id="deliveryName" type="text" placeholder="Ex: João Silva" />
+
+                <label>Telefone</label>
+                <input id="deliveryPhone" type="text" placeholder="Ex: 11999999999" />
+
+                <label>Endereço</label>
+                <textarea id="deliveryAddress" placeholder="Rua, número, bairro, referência"></textarea>
+              </div>
+
+              <div id="balcaoFields" class="form-area hidden">
+                <label>Nome do cliente</label>
+                <input id="balcaoName" type="text" placeholder="Ex: Cliente balcão" />
+              </div>
+
+              <div id="salaoFields" class="form-area hidden">
+                <label>Número da mesa</label>
+                <input id="mesaNumber" type="number" placeholder="Ex: 5" />
+
+                <div class="hint">
+                  Se a mesa já estiver aberta, o item será adicionado na comanda existente.
+                </div>
+              </div>
+
+              <h4 class="space-top">Montar pizza</h4>
+
+              <label>Tamanho</label>
+              <select id="pizzaSize">
+                <option value="broto">Broto</option>
+                <option value="grande">Grande</option>
+              </select>
+
+              <label>Quantidade de sabores</label>
+              <select id="flavorCount">
+                <option value="1">1 sabor</option>
+                <option value="2">2 sabores</option>
+              </select>
+
+              <label>Sabor 1</label>
+              <select id="flavorOne"></select>
+
+              <div id="secondFlavorBox">
+                <label>Sabor 2</label>
+                <select id="flavorTwo"></select>
+              </div>
+
+              <label>Borda</label>
+              <select id="borderSelect"></select>
+
+              <label>Quantidade</label>
+              <input id="pizzaQty" type="number" min="1" value="1" />
+
+              <button id="addPizza" class="btn primary full">Adicionar pizza</button>
+            </div>
+
+            <div class="panel">
+              <h4>Bebidas e adicionais</h4>
+
+              <label>Produto</label>
+              <select id="productSelect"></select>
+
+              <label>Quantidade</label>
+              <input id="productQty" type="number" min="1" value="1" />
+
+              <button id="addProduct" class="btn secondary full">Adicionar produto</button>
+
+              <h4 class="space-top">Carrinho</h4>
+
+              <div id="cartList" class="cart-list empty">
+                Nenhum item adicionado.
+              </div>
+
+              <label class="space-top">Forma de pagamento</label>
+              <select id="paymentMethod">
+                <option value="Dinheiro">Dinheiro</option>
+                <option value="Cartão">Cartão</option>
+                <option value="Pix">Pix</option>
+                <option value="iFood">iFood</option>
+                <option value="99Food">99Food</option>
+                <option value="Keeta">Keeta</option>
+              </select>
+
+              <div class="actions-row">
+                <button id="clearCart" class="btn danger">Limpar</button>
+                <button id="finishOrder" class="btn success">Finalizar</button>
+              </div>
+            </div>
+
+          </div>
+
+          <div id="openTabsBox" class="panel hidden">
+            <h4>Comandas abertas</h4>
+            <div id="openTabsList" class="tabs-list"></div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- PEDIDOS -->
+      <section class="page" id="page-pedidos">
+        <div class="panel">
+          <div class="section-header">
+            <div>
+              <h3>Pedidos finalizados</h3>
+              <p>Histórico salvo neste navegador</p>
+            </div>
+            <button id="clearOrders" class="btn danger">Limpar histórico</button>
+          </div>
+
+          <div id="ordersList" class="orders-list"></div>
+        </div>
+      </section>
+
+      <!-- CARDAPIO -->
+      <section class="page" id="page-cardapio">
+
+        <div class="grid-2">
+
+          <div class="panel">
+            <h3>Pizzas</h3>
+
+            <label>Código</label>
+            <input id="pizzaCodeInput" type="text" placeholder="Ex: 01" />
+
+            <label>Nome da pizza</label>
+            <input id="pizzaNameInput" type="text" placeholder="Ex: Calabresa" />
+
+            <label>Preço Broto</label>
+            <input id="pizzaBrotoInput" type="number" step="0.01" placeholder="Ex: 25.00" />
+
+            <label>Preço Grande</label>
+            <input id="pizzaGrandeInput" type="number" step="0.01" placeholder="Ex: 45.00" />
+
+            <button id="savePizza" class="btn primary full">Salvar pizza</button>
+
+            <div id="pizzaList" class="admin-list"></div>
+          </div>
+
+          <div class="panel">
+            <h3>Produtos, bordas e adicionais</h3>
+
+            <label>Tipo</label>
+            <select id="productTypeInput">
+              <option value="bebida">Bebida</option>
+              <option value="borda">Borda</option>
+              <option value="adicional">Adicional</option>
+            </select>
+
+            <label>Categoria da bebida</label>
+            <select id="drinkTypeInput">
+              <option value="">Não se aplica</option>
+              <option value="Refrigerante">Refrigerante</option>
+              <option value="Cerveja">Cerveja</option>
+              <option value="Vinho">Vinho</option>
+            </select>
+
+            <label>Nome</label>
+            <input id="productNameInput" type="text" placeholder="Ex: Coca-Cola 2L" />
+
+            <label>Preço</label>
+            <input id="productPriceInput" type="number" step="0.01" placeholder="Ex: 12.00" />
+
+            <button id="saveProduct" class="btn secondary full">Salvar produto</button>
+
+            <div id="productList" class="admin-list"></div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- RELATORIO -->
+      <section class="page" id="page-relatorio">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span>Vendas</span>
+            <strong id="statSales">0</strong>
+          </div>
+
+          <div class="stat-card">
+            <span>Total vendido</span>
+            <strong id="statRevenue">R$ 0,00</strong>
+          </div>
+
+          <div class="stat-card">
+            <span>Comandas abertas</span>
+            <strong id="statTabs">0</strong>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Resumo por tipo</h3>
+          <div id="reportByType" class="report-list"></div>
+        </div>
+      </section>
+
+      <!-- CONFIG -->
+      <section class="page" id="page-config">
+        <div class="panel">
+          <h3>Configurações</h3>
+
+          <p class="hint">
+            Esta versão salva os dados no navegador usando armazenamento local.
+            Para um sistema mais profissional com banco de dados, depois podemos migrar para Flask + SQLite.
+          </p>
+
+          <button id="resetSystem" class="btn danger">
+            Zerar todo o sistema
+          </button>
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
