@@ -461,6 +461,11 @@ textarea:focus {
   font-size: 28px;
 }
 
+.report-item {
+  display: flex;
+  justify-content: space-between;
+}
+
 .toast {
   position: fixed;
   top: 22px;
