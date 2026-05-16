@@ -1,14 +1,40 @@
 import os
 import sqlite3
 import shutil
-from datetime import datetime
-from flask import Flask, render_template, request, jsonify, send_file
+from datetime import datetime, date
+from functools import wraps
+
+from flask import (
+    Flask,
+    render_template,
+    request,
+    jsonify,
+    send_file,
+    redirect,
+    url_for,
+    session
+)
 
 app = Flask(__name__)
+app.secret_key = "troque-essa-chave-depois-pdv-pizzaria"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "pdv_pizzaria.db")
 BACKUP_DIR = os.path.join(BASE_DIR, "backups")
+
+
+USERS = {
+    "admin": {
+        "senha": "1234",
+        "nome": "Administrador",
+        "nivel": "admin"
+    },
+    "operador": {
+        "senha": "1234",
+        "nome": "Operador",
+        "nivel": "operador"
+    }
+}
 
 
 def get_db():
@@ -20,8 +46,43 @@ def get_db():
 def money_float(value):
     try:
         return float(value)
-    except:
+    except Exception:
         return 0.0
+
+
+def agora_str():
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def hoje_inicio():
+    return date.today().strftime("%Y-%m-%d") + " 00:00:00"
+
+
+def hoje_fim():
+    return date.today().strftime("%Y-%m-%d") + " 23:59:59"
+
+
+def login_required_page(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not session.get("usuario"):
+            return redirect(url_for("login"))
+        return func(*args, **kwargs)
+    return wrapper
+
+
+def login_required_api(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not session.get("usuario"):
+            return jsonify({"erro": "Sessão expirada. Faça login novamente."}), 401
+        return func(*args, **kwargs)
+    return wrapper
+
+
+def column_exists(conn, table, column):
+    rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+    return any(row["name"] == column for row in rows)
 
 
 def init_db():
@@ -47,6 +108,33 @@ def init_db():
             categoria TEXT,
             nome TEXT NOT NULL,
             preco REAL NOT NULL
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS caixas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            status TEXT NOT NULL DEFAULT 'aberto',
+            valor_inicial REAL NOT NULL DEFAULT 0,
+            valor_final_informado REAL,
+            valor_sistema REAL,
+            observacao TEXT,
+            aberto_por TEXT,
+            fechado_por TEXT,
+            aberto_em TEXT NOT NULL,
+            fechado_em TEXT
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS caixa_movimentos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            caixa_id INTEGER NOT NULL,
+            tipo TEXT NOT NULL,
+            descricao TEXT,
+            valor REAL NOT NULL,
+            criado_em TEXT NOT NULL,
+            FOREIGN KEY (caixa_id) REFERENCES caixas(id)
         )
     """)
 
@@ -100,6 +188,11 @@ def init_db():
 
     conn.commit()
 
+    if not column_exists(conn, "pedidos", "caixa_id"):
+        cursor.execute("ALTER TABLE pedidos ADD COLUMN caixa_id INTEGER")
+
+    conn.commit()
+
     cursor.execute("SELECT COUNT(*) AS total FROM pizzas")
     total_pizzas = cursor.fetchone()["total"]
 
@@ -140,23 +233,149 @@ def init_db():
     conn.close()
 
 
+def get_caixa_aberto(conn):
+    return conn.execute("""
+        SELECT *
+        FROM caixas
+        WHERE status = 'aberto'
+        ORDER BY id DESC
+        LIMIT 1
+    """).fetchone()
+
+
+def calcular_valor_caixa(conn, caixa_id):
+    caixa = conn.execute("""
+        SELECT *
+        FROM caixas
+        WHERE id = ?
+    """, (caixa_id,)).fetchone()
+
+    if not caixa:
+        return 0.0
+
+    valor_inicial = money_float(caixa["valor_inicial"])
+
+    vendas = conn.execute("""
+        SELECT COALESCE(SUM(total), 0) AS total
+        FROM pedidos
+        WHERE caixa_id = ?
+    """, (caixa_id,)).fetchone()["total"]
+
+    reforcos = conn.execute("""
+        SELECT COALESCE(SUM(valor), 0) AS total
+        FROM caixa_movimentos
+        WHERE caixa_id = ? AND tipo = 'reforco'
+    """, (caixa_id,)).fetchone()["total"]
+
+    sangrias = conn.execute("""
+        SELECT COALESCE(SUM(valor), 0) AS total
+        FROM caixa_movimentos
+        WHERE caixa_id = ? AND tipo = 'sangria'
+    """, (caixa_id,)).fetchone()["total"]
+
+    return valor_inicial + money_float(vendas) + money_float(reforcos) - money_float(sangrias)
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "GET":
+        if session.get("usuario"):
+            return redirect(url_for("index"))
+        return render_template("login.html")
+
+    usuario = request.form.get("usuario", "").strip()
+    senha = request.form.get("senha", "").strip()
+
+    user = USERS.get(usuario)
+
+    if not user or user["senha"] != senha:
+        return render_template(
+            "login.html",
+            erro="Usuário ou senha inválidos."
+        )
+
+    session["usuario"] = usuario
+    session["nome"] = user["nome"]
+    session["nivel"] = user["nivel"]
+
+    return redirect(url_for("index"))
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+
 @app.route("/")
+@login_required_page
 def index():
-    return render_template("index.html")
+    return render_template(
+        "index.html",
+        usuario=session.get("nome"),
+        nivel=session.get("nivel")
+    )
+
+
+@app.route("/cupom/<int:pedido_id>")
+@login_required_page
+def cupom(pedido_id):
+    conn = get_db()
+
+    pedido = conn.execute("""
+        SELECT *
+        FROM pedidos
+        WHERE id = ?
+    """, (pedido_id,)).fetchone()
+
+    if not pedido:
+        conn.close()
+        return "Pedido não encontrado.", 404
+
+    itens = conn.execute("""
+        SELECT *
+        FROM pedido_itens
+        WHERE pedido_id = ?
+        ORDER BY id
+    """, (pedido_id,)).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "cupom.html",
+        pedido=dict(pedido),
+        itens=[dict(item) for item in itens]
+    )
+
+
+@app.route("/api/sessao", methods=["GET"])
+@login_required_api
+def api_sessao():
+    return jsonify({
+        "usuario": session.get("usuario"),
+        "nome": session.get("nome"),
+        "nivel": session.get("nivel")
+    })
 
 
 @app.route("/api/pizzas", methods=["GET"])
+@login_required_api
 def listar_pizzas():
     conn = get_db()
-    pizzas = conn.execute("SELECT * FROM pizzas ORDER BY CAST(codigo AS INTEGER), nome").fetchall()
+    pizzas = conn.execute("""
+        SELECT *
+        FROM pizzas
+        ORDER BY CAST(codigo AS INTEGER), nome
+    """).fetchall()
     conn.close()
 
     return jsonify([dict(pizza) for pizza in pizzas])
 
 
 @app.route("/api/pizzas", methods=["POST"])
+@login_required_api
 def salvar_pizza():
-    data = request.json
+    data = request.json or {}
 
     pizza_id = data.get("id")
     codigo = data.get("codigo", "").strip()
@@ -166,6 +385,9 @@ def salvar_pizza():
 
     if not codigo or not nome:
         return jsonify({"erro": "Código e nome são obrigatórios."}), 400
+
+    if preco_broto <= 0 or preco_grande <= 0:
+        return jsonify({"erro": "Os preços precisam ser maiores que zero."}), 400
 
     conn = get_db()
     cursor = conn.cursor()
@@ -189,6 +411,7 @@ def salvar_pizza():
 
 
 @app.route("/api/pizzas/<int:pizza_id>", methods=["DELETE"])
+@login_required_api
 def excluir_pizza(pizza_id):
     conn = get_db()
     conn.execute("DELETE FROM pizzas WHERE id = ?", (pizza_id,))
@@ -199,17 +422,23 @@ def excluir_pizza(pizza_id):
 
 
 @app.route("/api/produtos", methods=["GET"])
+@login_required_api
 def listar_produtos():
     conn = get_db()
-    produtos = conn.execute("SELECT * FROM produtos ORDER BY tipo, nome").fetchall()
+    produtos = conn.execute("""
+        SELECT *
+        FROM produtos
+        ORDER BY tipo, nome
+    """).fetchall()
     conn.close()
 
     return jsonify([dict(produto) for produto in produtos])
 
 
 @app.route("/api/produtos", methods=["POST"])
+@login_required_api
 def salvar_produto():
-    data = request.json
+    data = request.json or {}
 
     produto_id = data.get("id")
     tipo = data.get("tipo", "").strip()
@@ -219,6 +448,9 @@ def salvar_produto():
 
     if not tipo or not nome:
         return jsonify({"erro": "Tipo e nome são obrigatórios."}), 400
+
+    if preco < 0:
+        return jsonify({"erro": "Preço não pode ser negativo."}), 400
 
     if tipo != "bebida":
         categoria = ""
@@ -245,6 +477,7 @@ def salvar_produto():
 
 
 @app.route("/api/produtos/<int:produto_id>", methods=["DELETE"])
+@login_required_api
 def excluir_produto(produto_id):
     conn = get_db()
     conn.execute("DELETE FROM produtos WHERE id = ?", (produto_id,))
@@ -254,12 +487,224 @@ def excluir_produto(produto_id):
     return jsonify({"ok": True})
 
 
+@app.route("/api/caixa/status", methods=["GET"])
+@login_required_api
+def caixa_status():
+    conn = get_db()
+    caixa = get_caixa_aberto(conn)
+
+    if not caixa:
+        conn.close()
+        return jsonify({
+            "aberto": False,
+            "mensagem": "Nenhum caixa aberto."
+        })
+
+    valor_sistema = calcular_valor_caixa(conn, caixa["id"])
+
+    movimentos = conn.execute("""
+        SELECT *
+        FROM caixa_movimentos
+        WHERE caixa_id = ?
+        ORDER BY id DESC
+    """, (caixa["id"],)).fetchall()
+
+    vendas = conn.execute("""
+        SELECT COUNT(*) AS qtd, COALESCE(SUM(total), 0) AS total
+        FROM pedidos
+        WHERE caixa_id = ?
+    """, (caixa["id"],)).fetchone()
+
+    por_pagamento = conn.execute("""
+        SELECT pagamento, COALESCE(SUM(total), 0) AS total
+        FROM pedidos
+        WHERE caixa_id = ?
+        GROUP BY pagamento
+        ORDER BY pagamento
+    """, (caixa["id"],)).fetchall()
+
+    caixa_dict = dict(caixa)
+    caixa_dict["valor_sistema"] = valor_sistema
+    caixa_dict["movimentos"] = [dict(item) for item in movimentos]
+    caixa_dict["vendas_qtd"] = vendas["qtd"]
+    caixa_dict["vendas_total"] = vendas["total"]
+    caixa_dict["por_pagamento"] = [dict(item) for item in por_pagamento]
+
+    conn.close()
+
+    return jsonify({
+        "aberto": True,
+        "caixa": caixa_dict
+    })
+
+
+@app.route("/api/caixa/abrir", methods=["POST"])
+@login_required_api
+def abrir_caixa():
+    data = request.json or {}
+    valor_inicial = money_float(data.get("valor_inicial"))
+    observacao = data.get("observacao", "").strip()
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    caixa = get_caixa_aberto(conn)
+
+    if caixa:
+        conn.close()
+        return jsonify({"erro": "Já existe um caixa aberto."}), 400
+
+    cursor.execute("""
+        INSERT INTO caixas
+        (status, valor_inicial, observacao, aberto_por, aberto_em)
+        VALUES ('aberto', ?, ?, ?, ?)
+    """, (
+        valor_inicial,
+        observacao,
+        session.get("usuario"),
+        agora_str()
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"ok": True})
+
+
+@app.route("/api/caixa/movimento", methods=["POST"])
+@login_required_api
+def caixa_movimento():
+    data = request.json or {}
+
+    tipo = data.get("tipo", "").strip()
+    valor = money_float(data.get("valor"))
+    descricao = data.get("descricao", "").strip()
+
+    if tipo not in ["sangria", "reforco"]:
+        return jsonify({"erro": "Tipo de movimento inválido."}), 400
+
+    if valor <= 0:
+        return jsonify({"erro": "Informe um valor maior que zero."}), 400
+
+    if not descricao:
+        descricao = "Sangria" if tipo == "sangria" else "Reforço de caixa"
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    caixa = get_caixa_aberto(conn)
+
+    if not caixa:
+        conn.close()
+        return jsonify({"erro": "Abra o caixa antes de registrar movimentos."}), 400
+
+    cursor.execute("""
+        INSERT INTO caixa_movimentos
+        (caixa_id, tipo, descricao, valor, criado_em)
+        VALUES (?, ?, ?, ?, ?)
+    """, (
+        caixa["id"],
+        tipo,
+        descricao,
+        valor,
+        agora_str()
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"ok": True})
+
+
+@app.route("/api/caixa/fechar", methods=["POST"])
+@login_required_api
+def fechar_caixa():
+    data = request.json or {}
+
+    valor_final_informado = money_float(data.get("valor_final_informado"))
+    observacao = data.get("observacao", "").strip()
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    caixa = get_caixa_aberto(conn)
+
+    if not caixa:
+        conn.close()
+        return jsonify({"erro": "Nenhum caixa aberto para fechar."}), 400
+
+    valor_sistema = calcular_valor_caixa(conn, caixa["id"])
+
+    cursor.execute("""
+        UPDATE caixas
+        SET status = 'fechado',
+            valor_final_informado = ?,
+            valor_sistema = ?,
+            observacao = ?,
+            fechado_por = ?,
+            fechado_em = ?
+        WHERE id = ?
+    """, (
+        valor_final_informado,
+        valor_sistema,
+        observacao,
+        session.get("usuario"),
+        agora_str(),
+        caixa["id"]
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "ok": True,
+        "valor_sistema": valor_sistema,
+        "valor_informado": valor_final_informado,
+        "diferenca": valor_final_informado - valor_sistema
+    })
+
+
+@app.route("/api/caixa/historico", methods=["GET"])
+@login_required_api
+def caixa_historico():
+    conn = get_db()
+
+    caixas = conn.execute("""
+        SELECT *
+        FROM caixas
+        ORDER BY id DESC
+        LIMIT 30
+    """).fetchall()
+
+    resultado = []
+
+    for caixa in caixas:
+        item = dict(caixa)
+
+        vendas = conn.execute("""
+            SELECT COUNT(*) AS qtd, COALESCE(SUM(total), 0) AS total
+            FROM pedidos
+            WHERE caixa_id = ?
+        """, (caixa["id"],)).fetchone()
+
+        item["vendas_qtd"] = vendas["qtd"]
+        item["vendas_total"] = vendas["total"]
+
+        resultado.append(item)
+
+    conn.close()
+
+    return jsonify(resultado)
+
+
 @app.route("/api/pedidos", methods=["GET"])
+@login_required_api
 def listar_pedidos():
     conn = get_db()
 
     pedidos = conn.execute("""
-        SELECT * FROM pedidos
+        SELECT *
+        FROM pedidos
         ORDER BY id DESC
     """).fetchall()
 
@@ -267,7 +712,8 @@ def listar_pedidos():
 
     for pedido in pedidos:
         itens = conn.execute("""
-            SELECT * FROM pedido_itens
+            SELECT *
+            FROM pedido_itens
             WHERE pedido_id = ?
             ORDER BY id
         """, (pedido["id"],)).fetchall()
@@ -282,8 +728,9 @@ def listar_pedidos():
 
 
 @app.route("/api/pedidos", methods=["POST"])
+@login_required_api
 def criar_pedido():
-    data = request.json
+    data = request.json or {}
 
     tipo = data.get("tipo")
     cliente = data.get("cliente", "")
@@ -299,17 +746,33 @@ def criar_pedido():
     if not itens:
         return jsonify({"erro": "Adicione pelo menos um item."}), 400
 
-    total = sum(money_float(item.get("total")) for item in itens)
-    criado_em = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
     conn = get_db()
     cursor = conn.cursor()
 
+    caixa = get_caixa_aberto(conn)
+
+    if not caixa:
+        conn.close()
+        return jsonify({"erro": "Abra o caixa antes de finalizar vendas."}), 400
+
+    total = sum(money_float(item.get("total")) for item in itens)
+    criado_em = agora_str()
+
     cursor.execute("""
         INSERT INTO pedidos
-        (tipo, cliente, telefone, endereco, mesa, pagamento, total, criado_em)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (tipo, cliente, telefone, endereco, mesa, pagamento, total, criado_em))
+        (tipo, cliente, telefone, endereco, mesa, pagamento, total, criado_em, caixa_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        tipo,
+        cliente,
+        telefone,
+        endereco,
+        mesa,
+        pagamento,
+        total,
+        criado_em,
+        caixa["id"]
+    ))
 
     pedido_id = cursor.lastrowid
 
@@ -329,10 +792,14 @@ def criar_pedido():
     conn.commit()
     conn.close()
 
-    return jsonify({"ok": True, "pedido_id": pedido_id})
+    return jsonify({
+        "ok": True,
+        "pedido_id": pedido_id
+    })
 
 
 @app.route("/api/comandas", methods=["GET"])
+@login_required_api
 def listar_comandas():
     conn = get_db()
 
@@ -366,8 +833,9 @@ def listar_comandas():
 
 
 @app.route("/api/comandas/adicionar", methods=["POST"])
+@login_required_api
 def adicionar_comanda():
-    data = request.json
+    data = request.json or {}
 
     mesa = str(data.get("mesa", "")).strip()
     pagamento = data.get("pagamento", "")
@@ -397,12 +865,15 @@ def adicionar_comanda():
             WHERE id = ?
         """, (pagamento, comanda_id))
     else:
-        criado_em = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
         cursor.execute("""
-            INSERT INTO comandas (mesa, status, pagamento, criado_em)
+            INSERT INTO comandas
+            (mesa, status, pagamento, criado_em)
             VALUES (?, 'aberta', ?, ?)
-        """, (mesa, pagamento, criado_em))
+        """, (
+            mesa,
+            pagamento,
+            agora_str()
+        ))
 
         comanda_id = cursor.lastrowid
 
@@ -426,12 +897,19 @@ def adicionar_comanda():
 
 
 @app.route("/api/comandas/<int:comanda_id>/fechar", methods=["POST"])
+@login_required_api
 def fechar_comanda(comanda_id):
     data = request.json or {}
     pagamento = data.get("pagamento", "")
 
     conn = get_db()
     cursor = conn.cursor()
+
+    caixa = get_caixa_aberto(conn)
+
+    if not caixa:
+        conn.close()
+        return jsonify({"erro": "Abra o caixa antes de fechar comandas."}), 400
 
     comanda = cursor.execute("""
         SELECT *
@@ -454,12 +932,12 @@ def fechar_comanda(comanda_id):
         return jsonify({"erro": "Comanda sem itens."}), 400
 
     total = sum(float(item["total"]) for item in itens)
-    criado_em = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    criado_em = agora_str()
 
     cursor.execute("""
         INSERT INTO pedidos
-        (tipo, cliente, telefone, endereco, mesa, pagamento, total, criado_em)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        (tipo, cliente, telefone, endereco, mesa, pagamento, total, criado_em, caixa_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         "Salão",
         f"Mesa {comanda['mesa']}",
@@ -468,7 +946,8 @@ def fechar_comanda(comanda_id):
         comanda["mesa"],
         pagamento or comanda["pagamento"] or "Não informado",
         total,
-        criado_em
+        criado_em,
+        caixa["id"]
     ))
 
     pedido_id = cursor.lastrowid
@@ -490,24 +969,45 @@ def fechar_comanda(comanda_id):
         UPDATE comandas
         SET status = 'fechada', pagamento = ?
         WHERE id = ?
-    """, (pagamento or comanda["pagamento"], comanda_id))
+    """, (
+        pagamento or comanda["pagamento"],
+        comanda_id
+    ))
 
     conn.commit()
     conn.close()
 
-    return jsonify({"ok": True})
+    return jsonify({
+        "ok": True,
+        "pedido_id": pedido_id
+    })
 
 
 @app.route("/api/relatorio", methods=["GET"])
+@login_required_api
 def relatorio():
     conn = get_db()
 
-    total_vendas = conn.execute("""
-        SELECT COUNT(*) AS total FROM pedidos
+    total_vendas_hoje = conn.execute("""
+        SELECT COUNT(*) AS total
+        FROM pedidos
+        WHERE criado_em BETWEEN ? AND ?
+    """, (hoje_inicio(), hoje_fim())).fetchone()["total"]
+
+    faturamento_hoje = conn.execute("""
+        SELECT COALESCE(SUM(total), 0) AS total
+        FROM pedidos
+        WHERE criado_em BETWEEN ? AND ?
+    """, (hoje_inicio(), hoje_fim())).fetchone()["total"]
+
+    total_vendas_geral = conn.execute("""
+        SELECT COUNT(*) AS total
+        FROM pedidos
     """).fetchone()["total"]
 
-    faturamento = conn.execute("""
-        SELECT COALESCE(SUM(total), 0) AS total FROM pedidos
+    faturamento_geral = conn.execute("""
+        SELECT COALESCE(SUM(total), 0) AS total
+        FROM pedidos
     """).fetchone()["total"]
 
     comandas_abertas = conn.execute("""
@@ -516,23 +1016,43 @@ def relatorio():
         WHERE status = 'aberta'
     """).fetchone()["total"]
 
-    por_tipo = conn.execute("""
+    por_tipo_hoje = conn.execute("""
         SELECT tipo, COALESCE(SUM(total), 0) AS total
         FROM pedidos
+        WHERE criado_em BETWEEN ? AND ?
         GROUP BY tipo
-    """).fetchall()
+    """, (hoje_inicio(), hoje_fim())).fetchall()
+
+    por_pagamento_hoje = conn.execute("""
+        SELECT pagamento, COALESCE(SUM(total), 0) AS total
+        FROM pedidos
+        WHERE criado_em BETWEEN ? AND ?
+        GROUP BY pagamento
+    """, (hoje_inicio(), hoje_fim())).fetchall()
+
+    caixa = get_caixa_aberto(conn)
+    caixa_info = None
+
+    if caixa:
+        caixa_info = dict(caixa)
+        caixa_info["valor_sistema"] = calcular_valor_caixa(conn, caixa["id"])
 
     conn.close()
 
     return jsonify({
-        "total_vendas": total_vendas,
-        "faturamento": faturamento,
+        "total_vendas": total_vendas_hoje,
+        "faturamento": faturamento_hoje,
+        "total_vendas_geral": total_vendas_geral,
+        "faturamento_geral": faturamento_geral,
         "comandas_abertas": comandas_abertas,
-        "por_tipo": [dict(item) for item in por_tipo]
+        "por_tipo": [dict(item) for item in por_tipo_hoje],
+        "por_pagamento": [dict(item) for item in por_pagamento_hoje],
+        "caixa_aberto": caixa_info
     })
 
 
 @app.route("/api/backup", methods=["POST"])
+@login_required_api
 def criar_backup():
     os.makedirs(BACKUP_DIR, exist_ok=True)
 
@@ -549,12 +1069,21 @@ def criar_backup():
 
 
 @app.route("/api/backup/download", methods=["GET"])
+@login_required_page
 def baixar_banco():
-    return send_file(DB_PATH, as_attachment=True, download_name="pdv_pizzaria.db")
+    return send_file(
+        DB_PATH,
+        as_attachment=True,
+        download_name="pdv_pizzaria.db"
+    )
 
 
 @app.route("/api/sistema/zerar", methods=["POST"])
+@login_required_api
 def zerar_sistema():
+    if session.get("nivel") != "admin":
+        return jsonify({"erro": "Apenas administrador pode zerar o sistema."}), 403
+
     conn = get_db()
     cursor = conn.cursor()
 
@@ -562,6 +1091,8 @@ def zerar_sistema():
     cursor.execute("DELETE FROM pedidos")
     cursor.execute("DELETE FROM comanda_itens")
     cursor.execute("DELETE FROM comandas")
+    cursor.execute("DELETE FROM caixa_movimentos")
+    cursor.execute("DELETE FROM caixas")
     cursor.execute("DELETE FROM produtos")
     cursor.execute("DELETE FROM pizzas")
 
@@ -575,4 +1106,8 @@ def zerar_sistema():
 
 if __name__ == "__main__":
     init_db()
-    app.run(debug=True)
+    app.run(
+        host="127.0.0.1",
+        port=5000,
+        debug=False
+    )

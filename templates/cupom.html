@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Cupom Pedido {{ pedido.id }}</title>
+
+  <style>
+    @page {
+      size: 80mm auto;
+      margin: 0;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-weight: 700;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      color: #000;
+      font-family: Arial, "Courier New", monospace;
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.25;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .cupom {
+      width: 80mm;
+      padding: 4mm 3mm;
+    }
+
+    .center {
+      text-align: center;
+    }
+
+    .bold {
+      font-weight: 900;
+    }
+
+    .titulo {
+      font-size: 22px;
+      font-weight: 900;
+      margin-bottom: 2mm;
+    }
+
+    .subtitulo {
+      font-size: 15px;
+      margin-bottom: 2mm;
+    }
+
+    .linha {
+      border-top: 2px dashed #000;
+      margin: 8px 0;
+    }
+
+    .info {
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    .item {
+      margin-bottom: 8px;
+      font-size: 16px;
+    }
+
+    .item strong {
+      display: block;
+      font-size: 17px;
+      font-weight: 900;
+    }
+
+    .item small {
+      display: block;
+      font-size: 15px;
+      margin-top: 2px;
+    }
+
+    .total {
+      font-size: 24px;
+      font-weight: 900;
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    .footer {
+      margin-top: 12px;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    @media print {
+      body {
+        width: 80mm;
+      }
+
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="cupom">
+    <div class="center">
+      <div class="titulo">PIZZARIA</div>
+      <div class="subtitulo">Barra Funda Pizza e Vinho</div>
+      <div class="subtitulo">Pedido #{{ pedido.id }}</div>
+    </div>
+
+    <div class="linha"></div>
+
+    <div class="info"><strong>Tipo:</strong> {{ pedido.tipo }}</div>
+    <div class="info"><strong>Data:</strong> {{ pedido.criado_em }}</div>
+    <div class="info"><strong>Pagamento:</strong> {{ pedido.pagamento }}</div>
+
+    {% if pedido.cliente %}
+      <div class="info"><strong>Cliente:</strong> {{ pedido.cliente }}</div>
+    {% endif %}
+
+    {% if pedido.telefone %}
+      <div class="info"><strong>Telefone:</strong> {{ pedido.telefone }}</div>
+    {% endif %}
+
+    {% if pedido.endereco %}
+      <div class="info"><strong>Endereço:</strong> {{ pedido.endereco }}</div>
+    {% endif %}
+
+    {% if pedido.mesa %}
+      <div class="info"><strong>Mesa:</strong> {{ pedido.mesa }}</div>
+    {% endif %}
+
+    <div class="linha"></div>
+
+    {% for item in itens %}
+      <div class="item">
+        <strong>{{ item.quantidade }}x {{ item.descricao }}</strong>
+        <small>Unitário: R$ {{ "%.2f"|format(item.preco_unitario)|replace(".", ",") }}</small>
+        <small>Total: R$ {{ "%.2f"|format(item.total)|replace(".", ",") }}</small>
+      </div>
+    {% endfor %}
+
+    <div class="linha"></div>
+
+    <div class="total">
+      TOTAL<br>
+      R$ {{ "%.2f"|format(pedido.total)|replace(".", ",") }}
+    </div>
+
+    <div class="linha"></div>
+
+    <div class="footer">
+      Obrigado pela preferência!
+    </div>
+  </div>
+
+  <script>
+    window.onload = function () {
+      window.print();
+    };
+  </script>
+
+</body>
+</html>

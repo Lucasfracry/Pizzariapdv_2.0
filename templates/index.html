@@ -23,12 +23,19 @@
 
       <nav class="menu">
         <button class="menu-btn active" data-page="pdv">PDV</button>
+        <button class="menu-btn" data-page="caixa">Caixa</button>
         <button class="menu-btn" data-page="pedidos">Pedidos</button>
         <button class="menu-btn" data-page="cardapio">Cardápio</button>
         <button class="menu-btn" data-page="relatorio">Relatório</button>
         <button class="menu-btn" data-page="backup">Backup</button>
         <button class="menu-btn" data-page="config">Configurações</button>
       </nav>
+
+      <div class="sidebar-user">
+        <span>Logado como</span>
+        <strong>{{ usuario }}</strong>
+        <a href="/logout">Sair</a>
+      </div>
     </aside>
 
     <main class="main">
@@ -39,15 +46,14 @@
           <p id="pageSubtitle">Escolha o tipo de atendimento</p>
         </div>
 
-        <div class="status-box">
-          <span>Banco de dados</span>
-          <strong>SQLite</strong>
+        <div class="status-box" id="topCashStatus">
+          <span>Status do caixa</span>
+          <strong>Verificando...</strong>
         </div>
       </header>
 
       <section id="toast" class="toast"></section>
 
-      <!-- PDV -->
       <section class="page active" id="page-pdv">
 
         <div id="modeSelection" class="mode-grid">
@@ -173,7 +179,7 @@
 
               <div class="actions-row">
                 <button id="clearCart" class="btn danger">Limpar</button>
-                <button id="finishOrder" class="btn success">Finalizar</button>
+                <button id="finishOrder" class="btn success">Finalizar e imprimir</button>
               </div>
             </div>
 
@@ -188,7 +194,68 @@
 
       </section>
 
-      <!-- PEDIDOS -->
+      <section class="page" id="page-caixa">
+        <div class="grid-2">
+          <div class="panel">
+            <h3>Caixa atual</h3>
+
+            <div id="cashStatusBox" class="cash-status-box">
+              Carregando...
+            </div>
+
+            <div id="openCashPanel" class="space-top">
+              <h4>Abrir caixa</h4>
+
+              <label>Valor inicial</label>
+              <input id="cashInitialValue" type="number" step="0.01" placeholder="Ex: 100.00">
+
+              <label>Observação</label>
+              <textarea id="cashOpenObs" placeholder="Ex: Troco inicial"></textarea>
+
+              <button id="openCash" class="btn success full">Abrir caixa</button>
+            </div>
+
+            <div id="cashControlsPanel" class="space-top hidden">
+              <h4>Movimentar caixa</h4>
+
+              <label>Tipo</label>
+              <select id="cashMovementType">
+                <option value="reforco">Adicionar dinheiro / Reforço</option>
+                <option value="sangria">Sangria / Retirada</option>
+              </select>
+
+              <label>Valor</label>
+              <input id="cashMovementValue" type="number" step="0.01" placeholder="Ex: 50.00">
+
+              <label>Descrição</label>
+              <input id="cashMovementDesc" type="text" placeholder="Ex: Sangria para cofre">
+
+              <button id="addCashMovement" class="btn secondary full">Registrar movimento</button>
+
+              <h4 class="space-top">Fechar caixa</h4>
+
+              <label>Valor contado no caixa</label>
+              <input id="cashCloseValue" type="number" step="0.01" placeholder="Ex: 500.00">
+
+              <label>Observação do fechamento</label>
+              <textarea id="cashCloseObs" placeholder="Ex: Fechamento sem diferença"></textarea>
+
+              <button id="closeCash" class="btn danger full">Fechar caixa</button>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h3>Movimentos do caixa</h3>
+            <div id="cashMovementsList" class="admin-list"></div>
+          </div>
+        </div>
+
+        <div class="panel space-top">
+          <h3>Histórico de caixas</h3>
+          <div id="cashHistoryList" class="orders-list"></div>
+        </div>
+      </section>
+
       <section class="page" id="page-pedidos">
         <div class="panel">
           <div class="section-header">
@@ -202,7 +269,6 @@
         </div>
       </section>
 
-      <!-- CARDÁPIO -->
       <section class="page" id="page-cardapio">
 
         <div class="grid-2">
@@ -264,16 +330,15 @@
 
       </section>
 
-      <!-- RELATÓRIO -->
       <section class="page" id="page-relatorio">
         <div class="stats-grid">
           <div class="stat-card">
-            <span>Vendas</span>
+            <span>Vendas hoje</span>
             <strong id="statSales">0</strong>
           </div>
 
           <div class="stat-card">
-            <span>Total vendido</span>
+            <span>Total vendido hoje</span>
             <strong id="statRevenue">R$ 0,00</strong>
           </div>
 
@@ -283,13 +348,36 @@
           </div>
         </div>
 
-        <div class="panel">
-          <h3>Resumo por tipo</h3>
-          <div id="reportByType" class="report-list"></div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span>Vendas gerais</span>
+            <strong id="statSalesGeneral">0</strong>
+          </div>
+
+          <div class="stat-card">
+            <span>Total geral vendido</span>
+            <strong id="statRevenueGeneral">R$ 0,00</strong>
+          </div>
+
+          <div class="stat-card">
+            <span>Valor no caixa aberto</span>
+            <strong id="statOpenCash">R$ 0,00</strong>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="panel">
+            <h3>Resumo por tipo hoje</h3>
+            <div id="reportByType" class="report-list"></div>
+          </div>
+
+          <div class="panel">
+            <h3>Resumo por pagamento hoje</h3>
+            <div id="reportByPayment" class="report-list"></div>
+          </div>
         </div>
       </section>
 
-      <!-- BACKUP -->
       <section class="page" id="page-backup">
         <div class="panel">
           <h3>Backup do banco de dados</h3>
@@ -306,13 +394,12 @@
         </div>
       </section>
 
-      <!-- CONFIG -->
       <section class="page" id="page-config">
         <div class="panel">
           <h3>Configurações</h3>
 
           <p class="hint">
-            Atenção: o botão abaixo apaga pedidos, comandas, produtos e pizzas.
+            Atenção: o botão abaixo apaga pedidos, comandas, produtos, pizzas e caixas.
             Depois ele recria os itens padrão do sistema.
           </p>
 
@@ -324,6 +411,18 @@
 
     </main>
 
+  </div>
+
+  <div id="confirmModal" class="modal hidden">
+    <div class="modal-card">
+      <h3>Confirmação</h3>
+      <p id="confirmMessage">Tem certeza?</p>
+
+      <div class="actions-row">
+        <button id="confirmCancel" class="btn ghost">Cancelar</button>
+        <button id="confirmOk" class="btn danger">Confirmar</button>
+      </div>
+    </div>
   </div>
 
   <script src="{{ url_for('static', filename='script.js') }}"></script>

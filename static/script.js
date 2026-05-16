@@ -12,42 +12,110 @@ function money(value) {
 
 function showToast(message) {
   const toast = document.getElementById("toast");
+
+  if (!toast) {
+    alert(message);
+    return;
+  }
+
   toast.textContent = message;
   toast.classList.add("show");
 
   setTimeout(() => {
     toast.classList.remove("show");
-  }, 2500);
+  }, 3000);
+}
+
+function showConfirm(message) {
+  return new Promise(resolve => {
+    const modal = document.getElementById("confirmModal");
+    const messageBox = document.getElementById("confirmMessage");
+    const cancelBtn = document.getElementById("confirmCancel");
+    const okBtn = document.getElementById("confirmOk");
+
+    messageBox.textContent = message;
+    modal.classList.remove("hidden");
+
+    function cleanup(result) {
+      modal.classList.add("hidden");
+      cancelBtn.removeEventListener("click", cancelHandler);
+      okBtn.removeEventListener("click", okHandler);
+      resolve(result);
+    }
+
+    function cancelHandler() {
+      cleanup(false);
+    }
+
+    function okHandler() {
+      cleanup(true);
+    }
+
+    cancelBtn.addEventListener("click", cancelHandler);
+    okBtn.addEventListener("click", okHandler);
+  });
+}
+
+async function apiRequest(url, options = {}) {
+  try {
+    const response = await fetch(url, options);
+
+    if (response.status === 401) {
+      showToast("Sessão expirada. Faça login novamente.");
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 1000);
+      throw new Error("Sessão expirada.");
+    }
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      const msg = data.erro || "Erro ao processar solicitação.";
+      showToast(msg);
+      throw new Error(msg);
+    }
+
+    return data;
+  } catch (error) {
+    if (!String(error.message).includes("Sessão")) {
+      showToast(error.message || "Erro de conexão com o servidor.");
+    }
+
+    throw error;
+  }
 }
 
 async function apiGet(url) {
-  const response = await fetch(url);
-  return await response.json();
+  return await apiRequest(url);
 }
 
 async function apiPost(url, data = {}) {
-  const response = await fetch(url, {
+  return await apiRequest(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
     body: JSON.stringify(data)
   });
-
-  return await response.json();
 }
 
 async function apiDelete(url) {
-  const response = await fetch(url, {
+  return await apiRequest(url, {
     method: "DELETE"
   });
-
-  return await response.json();
 }
 
 function updatePageTitle(title, subtitle) {
   document.getElementById("pageTitle").textContent = title;
   document.getElementById("pageSubtitle").textContent = subtitle;
+}
+
+function openPrintWindow(pedidoId) {
+  if (!pedidoId) return;
+
+  const url = `/cupom/${pedidoId}`;
+  window.open(url, "_blank", "width=420,height=700");
 }
 
 function setupNavigation() {
@@ -68,6 +136,12 @@ function setupNavigation() {
 
       if (page === "pdv") {
         updatePageTitle("PDV", "Escolha o tipo de atendimento");
+        await refreshTopCashStatus();
+      }
+
+      if (page === "caixa") {
+        updatePageTitle("Caixa", "Abertura, fechamento, sangria e reforço");
+        await renderCashPage();
       }
 
       if (page === "pedidos") {
@@ -242,6 +316,11 @@ function addPizzaToCart() {
     return;
   }
 
+  if (quantidade <= 0) {
+    showToast("Informe uma quantidade válida.");
+    return;
+  }
+
   const priceOne = getPizzaPrice(pizzaOne, size);
   const priceTwo = flavorCount === "2" ? getPizzaPrice(pizzaTwo, size) : 0;
 
@@ -287,6 +366,11 @@ function addProductToCart() {
 
   if (!produto) {
     showToast("Cadastre produtos no cardápio.");
+    return;
+  }
+
+  if (quantidade <= 0) {
+    showToast("Informe uma quantidade válida.");
     return;
   }
 
@@ -350,101 +434,118 @@ function removeCartItem(id) {
   renderCart();
 }
 
-function clearCart() {
+async function clearCart() {
+  if (cart.length === 0) return;
+
+  const ok = await showConfirm("Deseja limpar todos os itens do carrinho?");
+
+  if (!ok) return;
+
   cart = [];
   renderCart();
   showToast("Carrinho limpo.");
 }
 
 async function finishOrder() {
-  if (!currentMode) {
-    showToast("Escolha Delivery, Salão ou Balcão.");
-    return;
-  }
-
-  if (cart.length === 0) {
-    showToast("Adicione pelo menos um item.");
-    return;
-  }
-
-  const pagamento = document.getElementById("paymentMethod").value;
-
-  if (currentMode === "delivery") {
-    const cliente = document.getElementById("deliveryName").value.trim();
-    const telefone = document.getElementById("deliveryPhone").value.trim();
-    const endereco = document.getElementById("deliveryAddress").value.trim();
-
-    if (!cliente || !telefone || !endereco) {
-      showToast("Preencha nome, telefone e endereço.");
+  try {
+    if (!currentMode) {
+      showToast("Escolha Delivery, Salão ou Balcão.");
       return;
     }
 
-    await apiPost("/api/pedidos", {
-      tipo: "Delivery",
-      cliente,
-      telefone,
-      endereco,
-      mesa: "",
-      pagamento,
-      itens: cart
-    });
-
-    document.getElementById("deliveryName").value = "";
-    document.getElementById("deliveryPhone").value = "";
-    document.getElementById("deliveryAddress").value = "";
-
-    cart = [];
-    renderCart();
-    showToast("Pedido delivery salvo no SQLite.");
-    return;
-  }
-
-  if (currentMode === "balcao") {
-    const cliente = document.getElementById("balcaoName").value.trim();
-
-    if (!cliente) {
-      showToast("Preencha o nome do cliente.");
+    if (cart.length === 0) {
+      showToast("Adicione pelo menos um item.");
       return;
     }
 
-    await apiPost("/api/pedidos", {
-      tipo: "Balcão",
-      cliente,
-      telefone: "",
-      endereco: "",
-      mesa: "",
-      pagamento,
-      itens: cart
-    });
+    const pagamento = document.getElementById("paymentMethod").value;
 
-    document.getElementById("balcaoName").value = "";
+    if (currentMode === "delivery") {
+      const cliente = document.getElementById("deliveryName").value.trim();
+      const telefone = document.getElementById("deliveryPhone").value.trim();
+      const endereco = document.getElementById("deliveryAddress").value.trim();
 
-    cart = [];
-    renderCart();
-    showToast("Pedido balcão salvo no SQLite.");
-    return;
-  }
+      if (!cliente || !telefone || !endereco) {
+        showToast("Preencha nome, telefone e endereço.");
+        return;
+      }
 
-  if (currentMode === "salao") {
-    const mesa = document.getElementById("mesaNumber").value.trim();
+      const result = await apiPost("/api/pedidos", {
+        tipo: "Delivery",
+        cliente,
+        telefone,
+        endereco,
+        mesa: "",
+        pagamento,
+        itens: cart
+      });
 
-    if (!mesa) {
-      showToast("Informe o número da mesa.");
+      document.getElementById("deliveryName").value = "";
+      document.getElementById("deliveryPhone").value = "";
+      document.getElementById("deliveryAddress").value = "";
+
+      cart = [];
+      renderCart();
+      await refreshTopCashStatus();
+
+      showToast("Pedido delivery salvo. Abrindo impressão.");
+      openPrintWindow(result.pedido_id);
       return;
     }
 
-    await apiPost("/api/comandas/adicionar", {
-      mesa,
-      pagamento,
-      itens: cart
-    });
+    if (currentMode === "balcao") {
+      const cliente = document.getElementById("balcaoName").value.trim();
 
-    document.getElementById("mesaNumber").value = "";
+      if (!cliente) {
+        showToast("Preencha o nome do cliente.");
+        return;
+      }
 
-    cart = [];
-    renderCart();
-    await renderOpenTabs();
-    showToast(`Itens adicionados na mesa ${mesa}.`);
+      const result = await apiPost("/api/pedidos", {
+        tipo: "Balcão",
+        cliente,
+        telefone: "",
+        endereco: "",
+        mesa: "",
+        pagamento,
+        itens: cart
+      });
+
+      document.getElementById("balcaoName").value = "";
+
+      cart = [];
+      renderCart();
+      await refreshTopCashStatus();
+
+      showToast("Pedido balcão salvo. Abrindo impressão.");
+      openPrintWindow(result.pedido_id);
+      return;
+    }
+
+    if (currentMode === "salao") {
+      const mesa = document.getElementById("mesaNumber").value.trim();
+
+      if (!mesa) {
+        showToast("Informe o número da mesa.");
+        return;
+      }
+
+      await apiPost("/api/comandas/adicionar", {
+        mesa,
+        pagamento,
+        itens: cart
+      });
+
+      document.getElementById("mesaNumber").value = "";
+
+      cart = [];
+      renderCart();
+      await renderOpenTabs();
+
+      showToast(`Itens adicionados na mesa ${mesa}.`);
+    }
+  } catch (error) {
+    console.error(error);
   }
 }
 
@@ -475,7 +576,7 @@ async function renderOpenTabs() {
 
       <div class="actions-row">
         <button class="btn secondary" onclick="selecionarMesa('${comanda.mesa}')">Adicionar mais</button>
-        <button class="btn success" onclick="closeTableTab(${comanda.id})">Fechar comanda</button>
+        <button class="btn success" onclick="closeTableTab(${comanda.id})">Fechar e imprimir</button>
       </div>
     `;
 
@@ -489,14 +590,24 @@ function selecionarMesa(mesa) {
 }
 
 async function closeTableTab(comandaId) {
-  const pagamento = document.getElementById("paymentMethod").value;
+  try {
+    const ok = await showConfirm("Deseja fechar esta comanda e salvar como venda?");
+    if (!ok) return;
 
-  await apiPost(`/api/comandas/${comandaId}/fechar`, {
-    pagamento
-  });
+    const pagamento = document.getElementById("paymentMethod").value;
 
-  await renderOpenTabs();
-  showToast("Comanda fechada e venda salva.");
+    const result = await apiPost(`/api/comandas/${comandaId}/fechar`, {
+      pagamento
+    });
+
+    await renderOpenTabs();
+    await refreshTopCashStatus();
+
+    showToast("Comanda fechada. Abrindo impressão.");
+    openPrintWindow(result.pedido_id);
+  } catch (error) {
+    console.error(error);
+  }
 }
 
 async function renderOrders() {
@@ -518,7 +629,7 @@ async function renderOrders() {
 
     div.innerHTML = `
       <header>
-        <strong>${pedido.tipo} - ${pedido.cliente || "Cliente"}</strong>
+        <strong>#${pedido.id} - ${pedido.tipo} - ${pedido.cliente || "Cliente"}</strong>
         <strong>${money(pedido.total)}</strong>
       </header>
 
@@ -531,6 +642,10 @@ async function renderOrders() {
       <ul>
         ${pedido.itens.map(item => `<li>${item.quantidade}x ${item.descricao} - ${money(item.total)}</li>`).join("")}
       </ul>
+
+      <div class="admin-actions">
+        <button class="btn secondary" onclick="openPrintWindow(${pedido.id})">Imprimir cupom</button>
+      </div>
     `;
 
     list.appendChild(div);
@@ -603,30 +718,34 @@ function renderProductAdminList() {
 }
 
 async function savePizzaFromForm() {
-  const id = document.getElementById("pizzaIdInput").value;
-  const codigo = document.getElementById("pizzaCodeInput").value.trim();
-  const nome = document.getElementById("pizzaNameInput").value.trim();
-  const preco_broto = Number(document.getElementById("pizzaBrotoInput").value || 0);
-  const preco_grande = Number(document.getElementById("pizzaGrandeInput").value || 0);
+  try {
+    const id = document.getElementById("pizzaIdInput").value;
+    const codigo = document.getElementById("pizzaCodeInput").value.trim();
+    const nome = document.getElementById("pizzaNameInput").value.trim();
+    const preco_broto = Number(document.getElementById("pizzaBrotoInput").value || 0);
+    const preco_grande = Number(document.getElementById("pizzaGrandeInput").value || 0);
 
-  if (!codigo || !nome || preco_broto <= 0 || preco_grande <= 0) {
-    showToast("Preencha código, nome, preço broto e preço grande.");
-    return;
+    if (!codigo || !nome || preco_broto <= 0 || preco_grande <= 0) {
+      showToast("Preencha código, nome, preço broto e preço grande.");
+      return;
+    }
+
+    await apiPost("/api/pizzas", {
+      id: id || null,
+      codigo,
+      nome,
+      preco_broto,
+      preco_grande
+    });
+
+    clearPizzaForm();
+    await loadCatalog();
+    renderAdminLists();
+
+    showToast("Pizza salva no SQLite.");
+  } catch (error) {
+    console.error(error);
   }
-
-  await apiPost("/api/pizzas", {
-    id: id || null,
-    codigo,
-    nome,
-    preco_broto,
-    preco_grande
-  });
-
-  clearPizzaForm();
-  await loadCatalog();
-  renderAdminLists();
-
-  showToast("Pizza salva no SQLite.");
 }
 
 function editPizza(id) {
@@ -644,12 +763,22 @@ function editPizza(id) {
 }
 
 async function deletePizza(id) {
-  await apiDelete(`/api/pizzas/${id}`);
+  try {
+    const pizza = pizzas.find(item => item.id === id);
+    const nome = pizza ? pizza.nome : "esta pizza";
 
-  await loadCatalog();
-  renderAdminLists();
+    const ok = await showConfirm(`Deseja excluir ${nome}?`);
+    if (!ok) return;
 
-  showToast("Pizza excluída.");
+    await apiDelete(`/api/pizzas/${id}`);
+
+    await loadCatalog();
+    renderAdminLists();
+
+    showToast("Pizza excluída.");
+  } catch (error) {
+    console.error(error);
+  }
 }
 
 function clearPizzaForm() {
@@ -662,30 +791,34 @@ function clearPizzaForm() {
 }
 
 async function saveProductFromForm() {
-  const id = document.getElementById("productIdInput").value;
-  const tipo = document.getElementById("productTypeInput").value;
-  const categoria = document.getElementById("drinkTypeInput").value;
-  const nome = document.getElementById("productNameInput").value.trim();
-  const preco = Number(document.getElementById("productPriceInput").value || 0);
+  try {
+    const id = document.getElementById("productIdInput").value;
+    const tipo = document.getElementById("productTypeInput").value;
+    const categoria = document.getElementById("drinkTypeInput").value;
+    const nome = document.getElementById("productNameInput").value.trim();
+    const preco = Number(document.getElementById("productPriceInput").value || 0);
 
-  if (!tipo || !nome || preco < 0) {
-    showToast("Preencha tipo, nome e preço.");
-    return;
+    if (!tipo || !nome || preco < 0) {
+      showToast("Preencha tipo, nome e preço.");
+      return;
+    }
+
+    await apiPost("/api/produtos", {
+      id: id || null,
+      tipo,
+      categoria,
+      nome,
+      preco
+    });
+
+    clearProductForm();
+    await loadCatalog();
+    renderAdminLists();
+
+    showToast("Produto salvo no SQLite.");
+  } catch (error) {
+    console.error(error);
   }
-
-  await apiPost("/api/produtos", {
-    id: id || null,
-    tipo,
-    categoria,
-    nome,
-    preco
-  });
-
-  clearProductForm();
-  await loadCatalog();
-  renderAdminLists();
-
-  showToast("Produto salvo no SQLite.");
 }
 
 function editProduct(id) {
@@ -703,12 +836,22 @@ function editProduct(id) {
 }
 
 async function deleteProduct(id) {
-  await apiDelete(`/api/produtos/${id}`);
+  try {
+    const produto = produtos.find(item => item.id === id);
+    const nome = produto ? produto.nome : "este produto";
 
-  await loadCatalog();
-  renderAdminLists();
+    const ok = await showConfirm(`Deseja excluir ${nome}?`);
+    if (!ok) return;
 
-  showToast("Produto excluído.");
+    await apiDelete(`/api/produtos/${id}`);
+
+    await loadCatalog();
+    renderAdminLists();
+
+    showToast("Produto excluído.");
+  } catch (error) {
+    console.error(error);
+  }
 }
 
 function clearProductForm() {
@@ -720,6 +863,197 @@ function clearProductForm() {
   document.getElementById("saveProduct").textContent = "Salvar produto";
 }
 
+async function refreshTopCashStatus() {
+  try {
+    const data = await apiGet("/api/caixa/status");
+    const box = document.getElementById("topCashStatus");
+
+    if (!data.aberto) {
+      box.className = "status-box status-danger";
+      box.innerHTML = `
+        <span>Status do caixa</span>
+        <strong>Fechado</strong>
+      `;
+      return;
+    }
+
+    box.className = "status-box";
+    box.innerHTML = `
+      <span>Caixa aberto</span>
+      <strong>${money(data.caixa.valor_sistema)}</strong>
+    `;
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function renderCashPage() {
+  const status = await apiGet("/api/caixa/status");
+  const statusBox = document.getElementById("cashStatusBox");
+  const openCashPanel = document.getElementById("openCashPanel");
+  const cashControlsPanel = document.getElementById("cashControlsPanel");
+  const movementsList = document.getElementById("cashMovementsList");
+
+  if (!status.aberto) {
+    statusBox.className = "cash-status-box closed";
+    statusBox.innerHTML = `
+      <strong>Caixa fechado</strong>
+      <span>Abra o caixa antes de começar as vendas.</span>
+    `;
+
+    openCashPanel.classList.remove("hidden");
+    cashControlsPanel.classList.add("hidden");
+    movementsList.innerHTML = `<div class="hint">Nenhum caixa aberto.</div>`;
+  } else {
+    const caixa = status.caixa;
+
+    statusBox.className = "cash-status-box opened";
+    statusBox.innerHTML = `
+      <strong>Caixa aberto</strong>
+      <span>Abertura: ${caixa.aberto_em}</span>
+      <span>Valor inicial: ${money(caixa.valor_inicial)}</span>
+      <span>Vendas: ${caixa.vendas_qtd} pedido(s) • ${money(caixa.vendas_total)}</span>
+      <span>Valor atual no sistema: ${money(caixa.valor_sistema)}</span>
+    `;
+
+    openCashPanel.classList.add("hidden");
+    cashControlsPanel.classList.remove("hidden");
+
+    if (!caixa.movimentos || caixa.movimentos.length === 0) {
+      movementsList.innerHTML = `<div class="hint">Nenhum movimento lançado.</div>`;
+    } else {
+      movementsList.innerHTML = "";
+
+      caixa.movimentos.forEach(mov => {
+        const div = document.createElement("div");
+        div.className = "admin-item";
+
+        div.innerHTML = `
+          <header>
+            <strong>${mov.tipo === "sangria" ? "Sangria" : "Reforço"}</strong>
+            <strong>${money(mov.valor)}</strong>
+          </header>
+          <div>${mov.descricao || ""}</div>
+          <small>${mov.criado_em}</small>
+        `;
+
+        movementsList.appendChild(div);
+      });
+    }
+  }
+
+  await renderCashHistory();
+  await refreshTopCashStatus();
+}
+
+async function renderCashHistory() {
+  const caixas = await apiGet("/api/caixa/historico");
+  const list = document.getElementById("cashHistoryList");
+
+  if (caixas.length === 0) {
+    list.innerHTML = `<div class="hint">Nenhum caixa registrado.</div>`;
+    return;
+  }
+
+  list.innerHTML = "";
+
+  caixas.forEach(caixa => {
+    const div = document.createElement("div");
+    div.className = "order-item";
+
+    const statusLabel = caixa.status === "aberto" ? "Aberto" : "Fechado";
+    const finalInfo = caixa.status === "fechado"
+      ? `<br>Valor sistema: ${money(caixa.valor_sistema)} • Valor informado: ${money(caixa.valor_final_informado)}`
+      : "";
+
+    div.innerHTML = `
+      <header>
+        <strong>Caixa #${caixa.id} - ${statusLabel}</strong>
+        <strong>${money(caixa.vendas_total)}</strong>
+      </header>
+
+      <div class="order-meta">
+        Aberto em: ${caixa.aberto_em}
+        ${caixa.fechado_em ? `<br>Fechado em: ${caixa.fechado_em}` : ""}
+        <br>Vendas: ${caixa.vendas_qtd}
+        ${finalInfo}
+      </div>
+    `;
+
+    list.appendChild(div);
+  });
+}
+
+async function openCash() {
+  try {
+    const valor = Number(document.getElementById("cashInitialValue").value || 0);
+    const observacao = document.getElementById("cashOpenObs").value.trim();
+
+    await apiPost("/api/caixa/abrir", {
+      valor_inicial: valor,
+      observacao
+    });
+
+    document.getElementById("cashInitialValue").value = "";
+    document.getElementById("cashOpenObs").value = "";
+
+    showToast("Caixa aberto.");
+    await renderCashPage();
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function addCashMovement() {
+  try {
+    const tipo = document.getElementById("cashMovementType").value;
+    const valor = Number(document.getElementById("cashMovementValue").value || 0);
+    const descricao = document.getElementById("cashMovementDesc").value.trim();
+
+    if (valor <= 0) {
+      showToast("Informe um valor maior que zero.");
+      return;
+    }
+
+    await apiPost("/api/caixa/movimento", {
+      tipo,
+      valor,
+      descricao
+    });
+
+    document.getElementById("cashMovementValue").value = "";
+    document.getElementById("cashMovementDesc").value = "";
+
+    showToast("Movimento registrado.");
+    await renderCashPage();
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function closeCash() {
+  try {
+    const valor = Number(document.getElementById("cashCloseValue").value || 0);
+    const observacao = document.getElementById("cashCloseObs").value.trim();
+
+    const ok = await showConfirm("Deseja fechar o caixa atual?");
+    if (!ok) return;
+
+    const result = await apiPost("/api/caixa/fechar", {
+      valor_final_informado: valor,
+      observacao
+    });
+
+    document.getElementById("cashCloseValue").value = "";
+    document.getElementById("cashCloseObs").value = "";
+
+    showToast(`Caixa fechado. Diferença: ${money(result.diferenca)}`);
+    await renderCashPage();
+  } catch (error) {
+    console.error(error);
+  }
+}
+
 async function renderReport() {
   const data = await apiGet("/api/relatorio");
 
@@ -727,32 +1061,61 @@ async function renderReport() {
   document.getElementById("statRevenue").textContent = money(data.faturamento);
   document.getElementById("statTabs").textContent = data.comandas_abertas;
 
+  document.getElementById("statSalesGeneral").textContent = data.total_vendas_geral;
+  document.getElementById("statRevenueGeneral").textContent = money(data.faturamento_geral);
+
+  document.getElementById("statOpenCash").textContent = data.caixa_aberto
+    ? money(data.caixa_aberto.valor_sistema)
+    : "Fechado";
+
   const list = document.getElementById("reportByType");
   list.innerHTML = "";
 
   if (data.por_tipo.length === 0) {
-    list.innerHTML = `<div class="hint">Nenhuma venda registrada.</div>`;
-    return;
+    list.innerHTML = `<div class="hint">Nenhuma venda registrada hoje.</div>`;
+  } else {
+    data.por_tipo.forEach(item => {
+      const div = document.createElement("div");
+      div.className = "report-item";
+      div.innerHTML = `
+        <strong>${item.tipo}</strong>
+        <span>${money(item.total)}</span>
+      `;
+      list.appendChild(div);
+    });
   }
 
-  data.por_tipo.forEach(item => {
-    const div = document.createElement("div");
-    div.className = "report-item";
-    div.innerHTML = `
-      <strong>${item.tipo}</strong>
-      <span>${money(item.total)}</span>
-    `;
-    list.appendChild(div);
-  });
+  const paymentList = document.getElementById("reportByPayment");
+  paymentList.innerHTML = "";
+
+  if (!data.por_pagamento || data.por_pagamento.length === 0) {
+    paymentList.innerHTML = `<div class="hint">Nenhum pagamento registrado hoje.</div>`;
+  } else {
+    data.por_pagamento.forEach(item => {
+      const div = document.createElement("div");
+      div.className = "report-item";
+      div.innerHTML = `
+        <strong>${item.pagamento || "Não informado"}</strong>
+        <span>${money(item.total)}</span>
+      `;
+      paymentList.appendChild(div);
+    });
+  }
+
+  await refreshTopCashStatus();
 }
 
 async function createBackup() {
-  const result = await apiPost("/api/backup");
+  try {
+    const result = await apiPost("/api/backup");
 
-  if (result.ok) {
-    showToast(`Backup criado: ${result.arquivo}`);
-  } else {
-    showToast("Erro ao criar backup.");
+    if (result.ok) {
+      showToast(`Backup criado: ${result.arquivo}`);
+    } else {
+      showToast("Erro ao criar backup.");
+    }
+  } catch (error) {
+    console.error(error);
   }
 }
 
@@ -761,23 +1124,27 @@ function downloadDb() {
 }
 
 async function resetSystem() {
-  const confirmar = confirm("Tem certeza que deseja apagar tudo e recriar o sistema padrão?");
+  try {
+    const ok = await showConfirm("Tem certeza que deseja apagar tudo e recriar o sistema padrão?");
+    if (!ok) return;
 
-  if (!confirmar) return;
+    await apiPost("/api/sistema/zerar");
 
-  await apiPost("/api/sistema/zerar");
+    cart = [];
+    currentMode = null;
 
-  cart = [];
-  currentMode = null;
+    await loadCatalog();
+    renderSelectors();
+    renderCart();
+    renderAdminLists();
+    await renderOrders();
+    await renderReport();
+    await refreshTopCashStatus();
 
-  await loadCatalog();
-  renderSelectors();
-  renderCart();
-  renderAdminLists();
-  await renderOrders();
-  await renderReport();
-
-  showToast("Sistema zerado.");
+    showToast("Sistema zerado.");
+  } catch (error) {
+    console.error(error);
+  }
 }
 
 function setupEvents() {
@@ -790,6 +1157,10 @@ function setupEvents() {
 
   document.getElementById("savePizza").addEventListener("click", savePizzaFromForm);
   document.getElementById("saveProduct").addEventListener("click", saveProductFromForm);
+
+  document.getElementById("openCash").addEventListener("click", openCash);
+  document.getElementById("addCashMovement").addEventListener("click", addCashMovement);
+  document.getElementById("closeCash").addEventListener("click", closeCash);
 
   document.getElementById("createBackup").addEventListener("click", createBackup);
   document.getElementById("downloadDb").addEventListener("click", downloadDb);
@@ -806,6 +1177,8 @@ async function init() {
   renderSelectors();
   renderCart();
   renderAdminLists();
+
+  await refreshTopCashStatus();
   await renderReport();
 }
 

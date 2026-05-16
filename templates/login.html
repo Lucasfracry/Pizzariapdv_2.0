@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Login - PDV Pizzaria</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="login-body">
+
+  <main class="login-box">
+    <div class="login-logo">
+      <div class="logo-icon">🍕</div>
+      <h1>PDV Pizzaria</h1>
+      <p>Entre para acessar o sistema</p>
+    </div>
+
+    {% if erro %}
+      <div class="login-error">{{ erro }}</div>
+    {% endif %}
+
+    <form method="POST" action="/login">
+      <label>Usuário</label>
+      <input type="text" name="usuario" placeholder="admin" autocomplete="username" required>
+
+      <label>Senha</label>
+      <input type="password" name="senha" placeholder="1234" autocomplete="current-password" required>
+
+      <button class="btn primary full" type="submit">Entrar</button>
+    </form>
+
+    <div class="hint">
+      Usuário padrão: <strong>admin</strong><br>
+      Senha padrão: <strong>1234</strong>
+    </div>
+  </main>
+
+</body>
+</html>
