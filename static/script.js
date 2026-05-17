@@ -100,6 +100,16 @@ async function apiPost(url, data = {}) {
   });
 }
 
+async function apiPut(url, data = {}) {
+  return await apiRequest(url, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(data)
+  });
+}
+
 async function apiDelete(url) {
   return await apiRequest(url, {
     method: "DELETE"
@@ -109,6 +119,19 @@ async function apiDelete(url) {
 function updatePageTitle(title, subtitle) {
   document.getElementById("pageTitle").textContent = title;
   document.getElementById("pageSubtitle").textContent = subtitle;
+}
+
+function getOrderObservation() {
+  const field = document.getElementById("orderObservation");
+  return field ? field.value.trim() : "";
+}
+
+function clearOrderObservation() {
+  const field = document.getElementById("orderObservation");
+
+  if (field) {
+    field.value = "";
+  }
 }
 
 function openPrintWindow(pedidoId) {
@@ -123,6 +146,39 @@ function openCashPrintWindow(caixaId) {
 
   const url = `/caixa/cupom/${caixaId}`;
   window.open(url, "_blank", "width=420,height=700");
+}
+
+function openKitchenPrintWindow(comandaId, itensIds = [], observacao = "") {
+  if (!comandaId) return;
+
+  const params = new URLSearchParams();
+
+  if (Array.isArray(itensIds) && itensIds.length > 0) {
+    params.set("itens", itensIds.join(","));
+  }
+
+  if (observacao) {
+    params.set("observacao", observacao);
+  }
+
+  const query = params.toString();
+  const url = query
+    ? `/cozinha/comanda/${comandaId}?${query}`
+    : `/cozinha/comanda/${comandaId}`;
+
+  window.open(url, "_blank", "width=420,height=700");
+}
+
+function updateFinishButtonText() {
+  const button = document.getElementById("finishOrder");
+
+  if (!button) return;
+
+  if (currentMode === "salao") {
+    button.textContent = "Adicionar na mesa e imprimir cozinha";
+  } else {
+    button.textContent = "Finalizar e imprimir";
+  }
 }
 
 function setupNavigation() {
@@ -183,6 +239,8 @@ function setupModes() {
     card.addEventListener("click", async () => {
       currentMode = card.dataset.mode;
       cart = [];
+      clearOrderObservation();
+      updateFinishButtonText();
 
       document.getElementById("modeSelection").classList.add("hidden");
       document.getElementById("orderArea").classList.remove("hidden");
@@ -218,6 +276,8 @@ function setupModes() {
   document.getElementById("backToModes").addEventListener("click", () => {
     currentMode = null;
     cart = [];
+    clearOrderObservation();
+    updateFinishButtonText();
 
     document.getElementById("modeSelection").classList.remove("hidden");
     document.getElementById("orderArea").classList.add("hidden");
@@ -466,6 +526,7 @@ async function finishOrder() {
     }
 
     const pagamento = document.getElementById("paymentMethod").value;
+    const observacao = getOrderObservation();
 
     if (currentMode === "delivery") {
       const cliente = document.getElementById("deliveryName").value.trim();
@@ -484,12 +545,14 @@ async function finishOrder() {
         endereco,
         mesa: "",
         pagamento,
+        observacao,
         itens: cart
       });
 
       document.getElementById("deliveryName").value = "";
       document.getElementById("deliveryPhone").value = "";
       document.getElementById("deliveryAddress").value = "";
+      clearOrderObservation();
 
       cart = [];
       renderCart();
@@ -515,10 +578,12 @@ async function finishOrder() {
         endereco: "",
         mesa: "",
         pagamento,
+        observacao,
         itens: cart
       });
 
       document.getElementById("balcaoName").value = "";
+      clearOrderObservation();
 
       cart = [];
       renderCart();
@@ -537,19 +602,27 @@ async function finishOrder() {
         return;
       }
 
-      await apiPost("/api/comandas/adicionar", {
+      const result = await apiPost("/api/comandas/adicionar", {
         mesa,
         pagamento,
+        observacao,
         itens: cart
       });
 
+      openKitchenPrintWindow(
+        result.comanda_id,
+        result.itens_ids || [],
+        observacao
+      );
+
       document.getElementById("mesaNumber").value = "";
+      clearOrderObservation();
 
       cart = [];
       renderCart();
       await renderOpenTabs();
 
-      showToast(`Itens adicionados na mesa ${mesa}.`);
+      showToast(`Itens adicionados na mesa ${mesa}. Via da cozinha aberta para impressão.`);
     }
   } catch (error) {
     console.error(error);
@@ -568,6 +641,10 @@ async function renderOpenTabs() {
   list.innerHTML = "";
 
   comandas.forEach(comanda => {
+    const observacaoHtml = comanda.observacao
+      ? `<div class="hint"><strong>Observação:</strong><br>${comanda.observacao}</div>`
+      : "";
+
     const div = document.createElement("div");
     div.className = "tab-item";
 
@@ -577,8 +654,24 @@ async function renderOpenTabs() {
         <strong>${money(comanda.total)}</strong>
       </header>
 
+      ${observacaoHtml}
+
       <ul>
-        ${comanda.itens.map(item => `<li>${item.quantidade}x ${item.descricao} - ${money(item.total)}</li>`).join("")}
+        ${comanda.itens.map(item => `
+          <li>
+            <strong>${item.quantidade}x ${item.descricao}</strong><br>
+            <span>${money(item.preco_unitario)} cada • Total: ${money(item.total)}</span>
+
+            <div class="admin-actions" style="margin-top: 8px; margin-bottom: 10px;">
+              <button class="btn secondary" onclick="alterarItemComanda(${item.id}, ${item.quantidade})">
+                Alterar qtd
+              </button>
+              <button class="btn danger" onclick="excluirItemComanda(${item.id}, '${item.descricao.replace(/'/g, "\\'")}')">
+                Excluir item
+              </button>
+            </div>
+          </li>
+        `).join("")}
       </ul>
 
       <div class="actions-row">
@@ -594,6 +687,52 @@ async function renderOpenTabs() {
 function selecionarMesa(mesa) {
   document.getElementById("mesaNumber").value = mesa;
   showToast(`Mesa ${mesa} selecionada.`);
+}
+
+async function alterarItemComanda(itemId, quantidadeAtual) {
+  try {
+    const novaQuantidadeTexto = prompt(
+      "Digite a nova quantidade do item:",
+      quantidadeAtual
+    );
+
+    if (novaQuantidadeTexto === null) {
+      return;
+    }
+
+    const novaQuantidade = Number(novaQuantidadeTexto);
+
+    if (!Number.isInteger(novaQuantidade) || novaQuantidade <= 0) {
+      showToast("Informe uma quantidade inteira maior que zero.");
+      return;
+    }
+
+    await apiPut(`/api/comandas/item/${itemId}`, {
+      quantidade: novaQuantidade
+    });
+
+    await renderOpenTabs();
+    showToast("Quantidade do item alterada.");
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function excluirItemComanda(itemId, descricao) {
+  try {
+    const ok = await showConfirm(`Deseja excluir este item da comanda?\n\n${descricao}`);
+
+    if (!ok) return;
+
+    await apiDelete(`/api/comandas/item/${itemId}`);
+
+    await renderOpenTabs();
+    await renderReport();
+
+    showToast("Item excluído da comanda.");
+  } catch (error) {
+    console.error(error);
+  }
 }
 
 async function closeTableTab(comandaId) {
@@ -631,6 +770,10 @@ async function renderOrders() {
   list.innerHTML = "";
 
   pedidos.forEach(pedido => {
+    const observacaoHtml = pedido.observacao
+      ? `<div class="hint"><strong>Observação:</strong><br>${pedido.observacao}</div>`
+      : "";
+
     const div = document.createElement("div");
     div.className = "order-item";
 
@@ -645,6 +788,8 @@ async function renderOrders() {
         ${pedido.telefone ? ` • Tel: ${pedido.telefone}` : ""}
         ${pedido.endereco ? `<br>Endereço: ${pedido.endereco}` : ""}
       </div>
+
+      ${observacaoHtml}
 
       <ul>
         ${pedido.itens.map(item => `<li>${item.quantidade}x ${item.descricao} - ${money(item.total)}</li>`).join("")}

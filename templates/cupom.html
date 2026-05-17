@@ -12,7 +12,7 @@
 
     * {
       box-sizing: border-box;
-      font-weight: 700;
+      font-weight: 800;
     }
 
     body {
@@ -21,9 +21,9 @@
       background: #fff;
       color: #000;
       font-family: Arial, "Courier New", monospace;
-      font-size: 16px;
-      font-weight: 700;
-      line-height: 1.25;
+      font-size: 18px;
+      font-weight: 800;
+      line-height: 1.28;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
@@ -37,59 +37,153 @@
       text-align: center;
     }
 
-    .bold {
-      font-weight: 900;
-    }
-
     .titulo {
-      font-size: 22px;
+      font-size: 27px;
       font-weight: 900;
       margin-bottom: 2mm;
+      text-transform: uppercase;
     }
 
     .subtitulo {
-      font-size: 15px;
+      font-size: 18px;
+      font-weight: 900;
       margin-bottom: 2mm;
     }
 
+    .pedido-numero {
+      font-size: 25px;
+      font-weight: 900;
+      text-align: center;
+      margin-top: 4px;
+    }
+
     .linha {
-      border-top: 2px dashed #000;
+      border-top: 3px dashed #000;
+      margin: 10px 0;
+    }
+
+    .secao {
+      font-size: 22px;
+      font-weight: 900;
+      text-align: center;
       margin: 8px 0;
+      text-transform: uppercase;
     }
 
     .info {
-      font-size: 15px;
+      font-size: 18px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .info strong {
+      font-size: 19px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .destaque-box {
+      border: 3px solid #000;
+      padding: 8px;
+      margin: 8px 0;
+      font-weight: 900;
+      background: #fff;
+    }
+
+    .destaque-label {
+      font-size: 18px;
+      font-weight: 900;
+      text-align: center;
+      text-transform: uppercase;
       margin-bottom: 4px;
     }
 
+    .destaque-valor {
+      font-size: 23px;
+      font-weight: 900;
+      text-align: center;
+      line-height: 1.22;
+      text-transform: uppercase;
+      word-break: break-word;
+    }
+
+    .destaque-telefone .destaque-valor {
+      font-size: 26px;
+      letter-spacing: 1px;
+    }
+
+    .destaque-endereco .destaque-valor {
+      font-size: 21px;
+      text-align: left;
+      text-transform: none;
+    }
+
+    .destaque-tipo .destaque-valor {
+      font-size: 29px;
+    }
+
+    .observacao {
+      border: 3px solid #000;
+      padding: 8px;
+      margin: 10px 0;
+      font-size: 20px;
+      font-weight: 900;
+      line-height: 1.3;
+    }
+
+    .observacao-title {
+      font-size: 21px;
+      font-weight: 900;
+      text-align: center;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
     .item {
-      margin-bottom: 8px;
-      font-size: 16px;
+      border: 3px solid #000;
+      padding: 8px;
+      margin-bottom: 12px;
+      font-size: 18px;
+      font-weight: 900;
     }
 
     .item strong {
       display: block;
-      font-size: 17px;
+      font-size: 23px;
       font-weight: 900;
+      margin-bottom: 6px;
+      line-height: 1.2;
+      text-transform: uppercase;
     }
 
     .item small {
       display: block;
-      font-size: 15px;
-      margin-top: 2px;
+      font-size: 18px;
+      font-weight: 800;
+      margin-top: 3px;
+    }
+
+    .item-total {
+      font-size: 20px !important;
+      font-weight: 900 !important;
     }
 
     .total {
-      font-size: 24px;
+      border: 4px solid #000;
+      padding: 10px 6px;
+      font-size: 32px;
       font-weight: 900;
       text-align: center;
-      margin-top: 10px;
+      margin-top: 12px;
+      line-height: 1.15;
+      text-transform: uppercase;
     }
 
     .footer {
-      margin-top: 12px;
+      margin-top: 14px;
       text-align: center;
-      font-size: 14px;
+      font-size: 17px;
+      font-weight: 900;
     }
 
     @media print {
@@ -107,14 +201,24 @@
 
   <div class="cupom">
     <div class="center">
-      <div class="titulo">PIZZARIA</div>
+      <div class="titulo">Pizzaria</div>
       <div class="subtitulo">Barra Funda Pizza e Vinho</div>
-      <div class="subtitulo">Pedido #{{ pedido.id }}</div>
+      <div class="pedido-numero">PEDIDO #{{ pedido.id }}</div>
     </div>
 
     <div class="linha"></div>
 
-    <div class="info"><strong>Tipo:</strong> {{ pedido.tipo }}</div>
+    <div class="destaque-box destaque-tipo">
+      <div class="destaque-label">Tipo do pedido</div>
+      <div class="destaque-valor">
+        {% if pedido.tipo == "Salão" and pedido.mesa %}
+          MESA {{ pedido.mesa }}
+        {% else %}
+          {{ pedido.tipo }}
+        {% endif %}
+      </div>
+    </div>
+
     <div class="info"><strong>Data:</strong> {{ pedido.criado_em }}</div>
     <div class="info"><strong>Pagamento:</strong> {{ pedido.pagamento }}</div>
 
@@ -123,31 +227,51 @@
     {% endif %}
 
     {% if pedido.telefone %}
-      <div class="info"><strong>Telefone:</strong> {{ pedido.telefone }}</div>
+      <div class="destaque-box destaque-telefone">
+        <div class="destaque-label">Telefone</div>
+        <div class="destaque-valor">{{ pedido.telefone }}</div>
+      </div>
     {% endif %}
 
     {% if pedido.endereco %}
-      <div class="info"><strong>Endereço:</strong> {{ pedido.endereco }}</div>
+      <div class="destaque-box destaque-endereco">
+        <div class="destaque-label">Endereço de entrega</div>
+        <div class="destaque-valor">{{ pedido.endereco }}</div>
+      </div>
     {% endif %}
 
     {% if pedido.mesa %}
-      <div class="info"><strong>Mesa:</strong> {{ pedido.mesa }}</div>
+      <div class="destaque-box destaque-tipo">
+        <div class="destaque-label">Mesa</div>
+        <div class="destaque-valor">{{ pedido.mesa }}</div>
+      </div>
+    {% endif %}
+
+    {% if pedido.observacao %}
+      <div class="linha"></div>
+
+      <div class="observacao">
+        <div class="observacao-title">Observação do pedido</div>
+        {{ pedido.observacao }}
+      </div>
     {% endif %}
 
     <div class="linha"></div>
+
+    <div class="secao">Pizza / Itens pedidos</div>
 
     {% for item in itens %}
       <div class="item">
         <strong>{{ item.quantidade }}x {{ item.descricao }}</strong>
         <small>Unitário: R$ {{ "%.2f"|format(item.preco_unitario)|replace(".", ",") }}</small>
-        <small>Total: R$ {{ "%.2f"|format(item.total)|replace(".", ",") }}</small>
+        <small class="item-total">Total item: R$ {{ "%.2f"|format(item.total)|replace(".", ",") }}</small>
       </div>
     {% endfor %}
 
     <div class="linha"></div>
 
     <div class="total">
-      TOTAL<br>
+      Total<br>
       R$ {{ "%.2f"|format(pedido.total)|replace(".", ",") }}
     </div>
 

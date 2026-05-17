@@ -12,7 +12,7 @@
 
     * {
       box-sizing: border-box;
-      font-weight: 700;
+      font-weight: 800;
     }
 
     body {
@@ -21,9 +21,9 @@
       background: #fff;
       color: #000;
       font-family: Arial, "Courier New", monospace;
-      font-size: 15px;
-      font-weight: 700;
-      line-height: 1.25;
+      font-size: 17px;
+      font-weight: 800;
+      line-height: 1.28;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
@@ -38,80 +38,161 @@
     }
 
     .titulo {
-      font-size: 21px;
+      font-size: 24px;
       font-weight: 900;
       margin-bottom: 2mm;
+      text-transform: uppercase;
     }
 
     .subtitulo {
-      font-size: 14px;
+      font-size: 17px;
+      font-weight: 900;
       margin-bottom: 2mm;
     }
 
+    .caixa-numero {
+      font-size: 22px;
+      font-weight: 900;
+      text-align: center;
+      margin-top: 4px;
+    }
+
     .linha {
-      border-top: 2px dashed #000;
-      margin: 8px 0;
+      border-top: 3px dashed #000;
+      margin: 10px 0;
     }
 
     .info {
-      font-size: 15px;
-      margin-bottom: 4px;
+      font-size: 17px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .info strong {
+      font-size: 18px;
+      font-weight: 900;
+      text-transform: uppercase;
     }
 
     .secao {
-      font-size: 17px;
+      font-size: 21px;
       font-weight: 900;
       text-align: center;
-      margin: 8px 0 6px;
+      margin: 10px 0 8px;
+      text-transform: uppercase;
     }
 
     .row {
       display: flex;
       justify-content: space-between;
       gap: 8px;
-      font-size: 15px;
-      margin-bottom: 4px;
+      font-size: 18px;
+      font-weight: 800;
+      margin-bottom: 7px;
     }
 
     .row span:first-child {
-      max-width: 48mm;
+      max-width: 47mm;
+    }
+
+    .row strong {
+      font-size: 19px;
+      font-weight: 900;
+      text-align: right;
+    }
+
+    .row.importante {
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .row.importante span,
+    .row.importante strong {
+      font-size: 20px;
+      font-weight: 900;
     }
 
     .item {
-      margin-bottom: 7px;
-      font-size: 14px;
+      margin-bottom: 10px;
+      font-size: 16px;
+      font-weight: 800;
     }
 
     .item strong {
       display: block;
-      font-size: 15px;
+      font-size: 18px;
       font-weight: 900;
+      margin-bottom: 3px;
     }
 
     .item small {
       display: block;
-      font-size: 13px;
+      font-size: 16px;
+      font-weight: 800;
       margin-top: 2px;
     }
 
-    .total {
+    .total-box {
+      border: 3px solid #000;
+      padding: 8px;
+      margin: 10px 0;
+      text-align: center;
+    }
+
+    .total-label {
       font-size: 20px;
       font-weight: 900;
-      text-align: center;
-      margin-top: 10px;
+      text-transform: uppercase;
+    }
+
+    .total-value {
+      font-size: 28px;
+      font-weight: 900;
+      margin-top: 4px;
     }
 
     .diferenca {
+      border: 3px solid #000;
+      padding: 8px;
+      margin: 10px 0;
+      text-align: center;
+      font-weight: 900;
+    }
+
+    .diferenca-label {
+      font-size: 21px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .diferenca-value {
+      font-size: 27px;
+      font-weight: 900;
+      margin-top: 4px;
+    }
+
+    .observacao {
+      border: 3px solid #000;
+      padding: 8px;
+      margin: 10px 0;
       font-size: 18px;
       font-weight: 900;
+      line-height: 1.3;
+    }
+
+    .observacao-title {
+      font-size: 20px;
+      font-weight: 900;
       text-align: center;
-      margin-top: 8px;
+      margin-bottom: 6px;
+      text-transform: uppercase;
     }
 
     .footer {
-      margin-top: 12px;
+      margin-top: 14px;
       text-align: center;
-      font-size: 13px;
+      font-size: 16px;
+      font-weight: 900;
     }
 
     @media print {
@@ -130,9 +211,9 @@
   <div class="cupom">
 
     <div class="center">
-      <div class="titulo">FECHAMENTO DE CAIXA</div>
+      <div class="titulo">Fechamento de Caixa</div>
       <div class="subtitulo">Barra Funda Pizza e Vinho</div>
-      <div class="subtitulo">Caixa #{{ caixa.id }}</div>
+      <div class="caixa-numero">CAIXA #{{ caixa.id }}</div>
     </div>
 
     <div class="linha"></div>
@@ -154,14 +235,14 @@
 
     <div class="linha"></div>
 
-    <div class="secao">RESUMO DO CAIXA</div>
+    <div class="secao">Resumo do caixa</div>
 
-    <div class="row">
+    <div class="row importante">
       <span>Valor inicial</span>
       <strong>R$ {{ "%.2f"|format(resumo.valor_inicial)|replace(".", ",") }}</strong>
     </div>
 
-    <div class="row">
+    <div class="row importante">
       <span>Total de vendas</span>
       <strong>R$ {{ "%.2f"|format(resumo.total_vendas)|replace(".", ",") }}</strong>
     </div>
@@ -178,28 +259,28 @@
 
     <div class="linha"></div>
 
-    <div class="total">
-      VALOR SISTEMA<br>
-      R$ {{ "%.2f"|format(resumo.valor_sistema)|replace(".", ",") }}
+    <div class="total-box">
+      <div class="total-label">Valor sistema</div>
+      <div class="total-value">R$ {{ "%.2f"|format(resumo.valor_sistema)|replace(".", ",") }}</div>
     </div>
 
-    <div class="total">
-      VALOR INFORMADO<br>
-      R$ {{ "%.2f"|format(resumo.valor_informado)|replace(".", ",") }}
+    <div class="total-box">
+      <div class="total-label">Valor informado</div>
+      <div class="total-value">R$ {{ "%.2f"|format(resumo.valor_informado)|replace(".", ",") }}</div>
     </div>
 
     <div class="diferenca">
-      DIFERENÇA<br>
-      R$ {{ "%.2f"|format(resumo.diferenca)|replace(".", ",") }}
+      <div class="diferenca-label">Diferença</div>
+      <div class="diferenca-value">R$ {{ "%.2f"|format(resumo.diferenca)|replace(".", ",") }}</div>
     </div>
 
     <div class="linha"></div>
 
-    <div class="secao">VENDAS POR PAGAMENTO</div>
+    <div class="secao">Vendas por pagamento</div>
 
     {% if por_pagamento %}
       {% for item in por_pagamento %}
-        <div class="row">
+        <div class="row importante">
           <span>{{ item.pagamento or "Não informado" }}</span>
           <strong>R$ {{ "%.2f"|format(item.total)|replace(".", ",") }}</strong>
         </div>
@@ -210,7 +291,7 @@
 
     <div class="linha"></div>
 
-    <div class="secao">MOVIMENTOS</div>
+    <div class="secao">Movimentos</div>
 
     {% if movimentos %}
       {% for mov in movimentos %}
@@ -233,7 +314,7 @@
 
     <div class="linha"></div>
 
-    <div class="secao">PEDIDOS DO CAIXA</div>
+    <div class="secao">Pedidos do caixa</div>
 
     {% if pedidos %}
       {% for pedido in pedidos %}
@@ -241,8 +322,13 @@
           <strong>#{{ pedido.id }} - {{ pedido.tipo }} - R$ {{ "%.2f"|format(pedido.total)|replace(".", ",") }}</strong>
           <small>{{ pedido.criado_em }}</small>
           <small>Pagamento: {{ pedido.pagamento or "Não informado" }}</small>
+
           {% if pedido.cliente %}
             <small>Cliente: {{ pedido.cliente }}</small>
+          {% endif %}
+
+          {% if pedido.observacao %}
+            <small><strong>Obs:</strong> {{ pedido.observacao }}</small>
           {% endif %}
         </div>
       {% endfor %}
@@ -252,8 +338,11 @@
 
     {% if caixa.observacao %}
       <div class="linha"></div>
-      <div class="secao">OBSERVAÇÃO</div>
-      <div class="info">{{ caixa.observacao }}</div>
+
+      <div class="observacao">
+        <div class="observacao-title">Observação do fechamento</div>
+        {{ caixa.observacao }}
+      </div>
     {% endif %}
 
     <div class="linha"></div>
