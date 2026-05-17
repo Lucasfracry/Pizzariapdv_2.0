@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Fechamento de Caixa {{ caixa.id }}</title>
+
+  <style>
+    @page {
+      size: 80mm auto;
+      margin: 0;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-weight: 700;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      color: #000;
+      font-family: Arial, "Courier New", monospace;
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.25;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .cupom {
+      width: 80mm;
+      padding: 4mm 3mm;
+    }
+
+    .center {
+      text-align: center;
+    }
+
+    .titulo {
+      font-size: 21px;
+      font-weight: 900;
+      margin-bottom: 2mm;
+    }
+
+    .subtitulo {
+      font-size: 14px;
+      margin-bottom: 2mm;
+    }
+
+    .linha {
+      border-top: 2px dashed #000;
+      margin: 8px 0;
+    }
+
+    .info {
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    .secao {
+      font-size: 17px;
+      font-weight: 900;
+      text-align: center;
+      margin: 8px 0 6px;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    .row span:first-child {
+      max-width: 48mm;
+    }
+
+    .item {
+      margin-bottom: 7px;
+      font-size: 14px;
+    }
+
+    .item strong {
+      display: block;
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .item small {
+      display: block;
+      font-size: 13px;
+      margin-top: 2px;
+    }
+
+    .total {
+      font-size: 20px;
+      font-weight: 900;
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    .diferenca {
+      font-size: 18px;
+      font-weight: 900;
+      text-align: center;
+      margin-top: 8px;
+    }
+
+    .footer {
+      margin-top: 12px;
+      text-align: center;
+      font-size: 13px;
+    }
+
+    @media print {
+      body {
+        width: 80mm;
+      }
+
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="cupom">
+
+    <div class="center">
+      <div class="titulo">FECHAMENTO DE CAIXA</div>
+      <div class="subtitulo">Barra Funda Pizza e Vinho</div>
+      <div class="subtitulo">Caixa #{{ caixa.id }}</div>
+    </div>
+
+    <div class="linha"></div>
+
+    <div class="info"><strong>Status:</strong> {{ caixa.status }}</div>
+    <div class="info"><strong>Aberto em:</strong> {{ caixa.aberto_em }}</div>
+
+    {% if caixa.fechado_em %}
+      <div class="info"><strong>Fechado em:</strong> {{ caixa.fechado_em }}</div>
+    {% endif %}
+
+    {% if caixa.aberto_por %}
+      <div class="info"><strong>Aberto por:</strong> {{ caixa.aberto_por }}</div>
+    {% endif %}
+
+    {% if caixa.fechado_por %}
+      <div class="info"><strong>Fechado por:</strong> {{ caixa.fechado_por }}</div>
+    {% endif %}
+
+    <div class="linha"></div>
+
+    <div class="secao">RESUMO DO CAIXA</div>
+
+    <div class="row">
+      <span>Valor inicial</span>
+      <strong>R$ {{ "%.2f"|format(resumo.valor_inicial)|replace(".", ",") }}</strong>
+    </div>
+
+    <div class="row">
+      <span>Total de vendas</span>
+      <strong>R$ {{ "%.2f"|format(resumo.total_vendas)|replace(".", ",") }}</strong>
+    </div>
+
+    <div class="row">
+      <span>Reforços</span>
+      <strong>R$ {{ "%.2f"|format(resumo.total_reforcos)|replace(".", ",") }}</strong>
+    </div>
+
+    <div class="row">
+      <span>Sangrias</span>
+      <strong>R$ {{ "%.2f"|format(resumo.total_sangrias)|replace(".", ",") }}</strong>
+    </div>
+
+    <div class="linha"></div>
+
+    <div class="total">
+      VALOR SISTEMA<br>
+      R$ {{ "%.2f"|format(resumo.valor_sistema)|replace(".", ",") }}
+    </div>
+
+    <div class="total">
+      VALOR INFORMADO<br>
+      R$ {{ "%.2f"|format(resumo.valor_informado)|replace(".", ",") }}
+    </div>
+
+    <div class="diferenca">
+      DIFERENÇA<br>
+      R$ {{ "%.2f"|format(resumo.diferenca)|replace(".", ",") }}
+    </div>
+
+    <div class="linha"></div>
+
+    <div class="secao">VENDAS POR PAGAMENTO</div>
+
+    {% if por_pagamento %}
+      {% for item in por_pagamento %}
+        <div class="row">
+          <span>{{ item.pagamento or "Não informado" }}</span>
+          <strong>R$ {{ "%.2f"|format(item.total)|replace(".", ",") }}</strong>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="info">Nenhuma venda registrada.</div>
+    {% endif %}
+
+    <div class="linha"></div>
+
+    <div class="secao">MOVIMENTOS</div>
+
+    {% if movimentos %}
+      {% for mov in movimentos %}
+        <div class="item">
+          <strong>
+            {% if mov.tipo == "sangria" %}
+              SANGRIA
+            {% else %}
+              REFORÇO
+            {% endif %}
+            - R$ {{ "%.2f"|format(mov.valor)|replace(".", ",") }}
+          </strong>
+          <small>{{ mov.descricao }}</small>
+          <small>{{ mov.criado_em }}</small>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="info">Nenhum movimento lançado.</div>
+    {% endif %}
+
+    <div class="linha"></div>
+
+    <div class="secao">PEDIDOS DO CAIXA</div>
+
+    {% if pedidos %}
+      {% for pedido in pedidos %}
+        <div class="item">
+          <strong>#{{ pedido.id }} - {{ pedido.tipo }} - R$ {{ "%.2f"|format(pedido.total)|replace(".", ",") }}</strong>
+          <small>{{ pedido.criado_em }}</small>
+          <small>Pagamento: {{ pedido.pagamento or "Não informado" }}</small>
+          {% if pedido.cliente %}
+            <small>Cliente: {{ pedido.cliente }}</small>
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="info">Nenhum pedido neste caixa.</div>
+    {% endif %}
+
+    {% if caixa.observacao %}
+      <div class="linha"></div>
+      <div class="secao">OBSERVAÇÃO</div>
+      <div class="info">{{ caixa.observacao }}</div>
+    {% endif %}
+
+    <div class="linha"></div>
+
+    <div class="footer">
+      Fechamento impresso pelo PDV
+    </div>
+
+  </div>
+
+  <script>
+    window.onload = function () {
+      window.print();
+    };
+  </script>
+
+</body>
+</html>

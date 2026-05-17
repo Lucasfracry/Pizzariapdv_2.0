@@ -118,6 +118,13 @@ function openPrintWindow(pedidoId) {
   window.open(url, "_blank", "width=420,height=700");
 }
 
+function openCashPrintWindow(caixaId) {
+  if (!caixaId) return;
+
+  const url = `/caixa/cupom/${caixaId}`;
+  window.open(url, "_blank", "width=420,height=700");
+}
+
 function setupNavigation() {
   const buttons = document.querySelectorAll(".menu-btn");
 
@@ -966,6 +973,10 @@ async function renderCashHistory() {
       ? `<br>Valor sistema: ${money(caixa.valor_sistema)} • Valor informado: ${money(caixa.valor_final_informado)}`
       : "";
 
+    const imprimirFechamento = caixa.status === "fechado"
+      ? `<button class="btn secondary" onclick="openCashPrintWindow(${caixa.id})">Imprimir fechamento</button>`
+      : "";
+
     div.innerHTML = `
       <header>
         <strong>Caixa #${caixa.id} - ${statusLabel}</strong>
@@ -977,6 +988,10 @@ async function renderCashHistory() {
         ${caixa.fechado_em ? `<br>Fechado em: ${caixa.fechado_em}` : ""}
         <br>Vendas: ${caixa.vendas_qtd}
         ${finalInfo}
+      </div>
+
+      <div class="admin-actions">
+        ${imprimirFechamento}
       </div>
     `;
 
@@ -1036,7 +1051,7 @@ async function closeCash() {
     const valor = Number(document.getElementById("cashCloseValue").value || 0);
     const observacao = document.getElementById("cashCloseObs").value.trim();
 
-    const ok = await showConfirm("Deseja fechar o caixa atual?");
+    const ok = await showConfirm("Deseja fechar o caixa atual e imprimir o fechamento?");
     if (!ok) return;
 
     const result = await apiPost("/api/caixa/fechar", {
@@ -1047,7 +1062,10 @@ async function closeCash() {
     document.getElementById("cashCloseValue").value = "";
     document.getElementById("cashCloseObs").value = "";
 
-    showToast(`Caixa fechado. Diferença: ${money(result.diferenca)}`);
+    showToast(`Caixa fechado. Diferença: ${money(result.diferenca)}. Abrindo impressão.`);
+
+    openCashPrintWindow(result.caixa_id);
+
     await renderCashPage();
   } catch (error) {
     console.error(error);

@@ -348,6 +348,97 @@ def cupom(pedido_id):
     )
 
 
+@app.route("/caixa/cupom/<int:caixa_id>")
+@login_required_page
+def cupom_caixa(caixa_id):
+    conn = get_db()
+
+    caixa = conn.execute("""
+        SELECT *
+        FROM caixas
+        WHERE id = ?
+    """, (caixa_id,)).fetchone()
+
+    if not caixa:
+        conn.close()
+        return "Caixa não encontrado.", 404
+
+    pedidos = conn.execute("""
+        SELECT *
+        FROM pedidos
+        WHERE caixa_id = ?
+        ORDER BY id
+    """, (caixa_id,)).fetchall()
+
+    movimentos = conn.execute("""
+        SELECT *
+        FROM caixa_movimentos
+        WHERE caixa_id = ?
+        ORDER BY id
+    """, (caixa_id,)).fetchall()
+
+    por_pagamento = conn.execute("""
+        SELECT pagamento, COALESCE(SUM(total), 0) AS total
+        FROM pedidos
+        WHERE caixa_id = ?
+        GROUP BY pagamento
+        ORDER BY pagamento
+    """, (caixa_id,)).fetchall()
+
+    total_vendas = conn.execute("""
+        SELECT COALESCE(SUM(total), 0) AS total
+        FROM pedidos
+        WHERE caixa_id = ?
+    """, (caixa_id,)).fetchone()["total"]
+
+    total_reforcos = conn.execute("""
+        SELECT COALESCE(SUM(valor), 0) AS total
+        FROM caixa_movimentos
+        WHERE caixa_id = ? AND tipo = 'reforco'
+    """, (caixa_id,)).fetchone()["total"]
+
+    total_sangrias = conn.execute("""
+        SELECT COALESCE(SUM(valor), 0) AS total
+        FROM caixa_movimentos
+        WHERE caixa_id = ? AND tipo = 'sangria'
+    """, (caixa_id,)).fetchone()["total"]
+
+    valor_inicial = money_float(caixa["valor_inicial"])
+    total_vendas = money_float(total_vendas)
+    total_reforcos = money_float(total_reforcos)
+    total_sangrias = money_float(total_sangrias)
+
+    valor_sistema = valor_inicial + total_vendas + total_reforcos - total_sangrias
+
+    valor_informado = caixa["valor_final_informado"]
+
+    if valor_informado is None:
+        valor_informado = valor_sistema
+
+    valor_informado = money_float(valor_informado)
+
+    resumo = {
+        "valor_inicial": valor_inicial,
+        "total_vendas": total_vendas,
+        "total_reforcos": total_reforcos,
+        "total_sangrias": total_sangrias,
+        "valor_sistema": valor_sistema,
+        "valor_informado": valor_informado,
+        "diferenca": valor_informado - valor_sistema
+    }
+
+    conn.close()
+
+    return render_template(
+        "cupom_caixa.html",
+        caixa=dict(caixa),
+        pedidos=[dict(item) for item in pedidos],
+        movimentos=[dict(item) for item in movimentos],
+        por_pagamento=[dict(item) for item in por_pagamento],
+        resumo=resumo
+    )
+
+
 @app.route("/api/sessao", methods=["GET"])
 @login_required_api
 def api_sessao():
@@ -634,6 +725,7 @@ def fechar_caixa():
         return jsonify({"erro": "Nenhum caixa aberto para fechar."}), 400
 
     valor_sistema = calcular_valor_caixa(conn, caixa["id"])
+    caixa_id = caixa["id"]
 
     cursor.execute("""
         UPDATE caixas
@@ -650,7 +742,7 @@ def fechar_caixa():
         observacao,
         session.get("usuario"),
         agora_str(),
-        caixa["id"]
+        caixa_id
     ))
 
     conn.commit()
@@ -658,6 +750,7 @@ def fechar_caixa():
 
     return jsonify({
         "ok": True,
+        "caixa_id": caixa_id,
         "valor_sistema": valor_sistema,
         "valor_informado": valor_final_informado,
         "diferenca": valor_final_informado - valor_sistema
