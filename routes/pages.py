@@ -1,11 +1,20 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session
+from flask import Blueprint, render_template, request, redirect, url_for, session, send_from_directory
 
-from config import USERS
+from config import USERS, BASE_DIR
 from database import get_db, money_float, agora_str
 from decorators import login_required_page
 
 
 pages_bp = Blueprint("pages", __name__)
+
+
+@pages_bp.route("/favicon.ico")
+def favicon():
+    return send_from_directory(
+        BASE_DIR,
+        "pizza.ico",
+        mimetype="image/x-icon"
+    )
 
 
 @pages_bp.route("/login", methods=["GET", "POST"])

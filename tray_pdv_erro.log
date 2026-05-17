@@ -1,0 +1,35 @@
+[17/05/2026  2:57:53,76] BAT iniciado 
+Pasta do projeto: C:\Users\LUCAS\Documents\GitHub\Pizzariapdv_2.0\ 
+Ativando ambiente virtual... 
+Verificando dependencias... 
+Requirement already satisfied: pip in .\.venv\Lib\site-packages (26.1.1)
+Requirement already satisfied: Flask==3.0.3 in .\.venv\Lib\site-packages (from -r requirements.txt (line 1)) (3.0.3)
+Requirement already satisfied: Werkzeug>=3.0.0 in .\.venv\Lib\site-packages (from Flask==3.0.3->-r requirements.txt (line 1)) (3.1.8)
+Requirement already satisfied: Jinja2>=3.1.2 in .\.venv\Lib\site-packages (from Flask==3.0.3->-r requirements.txt (line 1)) (3.1.6)
+Requirement already satisfied: itsdangerous>=2.1.2 in .\.venv\Lib\site-packages (from Flask==3.0.3->-r requirements.txt (line 1)) (2.2.0)
+Requirement already satisfied: click>=8.1.3 in .\.venv\Lib\site-packages (from Flask==3.0.3->-r requirements.txt (line 1)) (8.3.3)
+Requirement already satisfied: blinker>=1.6.2 in .\.venv\Lib\site-packages (from Flask==3.0.3->-r requirements.txt (line 1)) (1.9.0)
+Requirement already satisfied: colorama in .\.venv\Lib\site-packages (from click>=8.1.3->Flask==3.0.3->-r requirements.txt (line 1)) (0.4.6)
+Requirement already satisfied: MarkupSafe>=2.0 in .\.venv\Lib\site-packages (from Jinja2>=3.1.2->Flask==3.0.3->-r requirements.txt (line 1)) (3.0.3)
+Chamando tray_pdv.py... 
+
+[17/05/2026 02:57:57] tray_pdv.py carregou o arquivo.
+[17/05/2026 02:57:57] DLLs do Windows carregadas.
+[17/05/2026 02:57:57] main iniciado.
+[17/05/2026 02:57:57] Configurando funções do Windows.
+[17/05/2026 02:57:57] Funções do Windows configuradas.
+[17/05/2026 02:57:57] Verificando servidor na porta 5000.
+[17/05/2026 02:57:58] Python atual: C:\Users\LUCAS\Documents\GitHub\Pizzariapdv_2.0\.venv\Scripts\pythonw.exe
+[17/05/2026 02:57:58] Python usado para iniciar Flask: C:\Users\LUCAS\Documents\GitHub\Pizzariapdv_2.0\.venv\Scripts\python.exe
+[17/05/2026 02:57:58] Iniciando Flask escondido.
+[17/05/2026 02:57:58] Servidor Flask iniciado. PID: 10636
+[17/05/2026 02:57:58] Aguardando servidor responder.
+[17/05/2026 02:57:58] Servidor respondeu na porta 5000.
+[17/05/2026 02:57:58] PDV aberto no navegador.
+[17/05/2026 02:57:58] Criando janela oculta do tray.
+[17/05/2026 02:57:58] Janela oculta criada.
+[17/05/2026 02:57:58] Adicionando ícone na bandeja.
+[17/05/2026 02:57:58] Tentando carregar ícone personalizado: C:\Users\LUCAS\Documents\GitHub\Pizzariapdv_2.0\pizza.ico
+[17/05/2026 02:57:58] Ícone personalizado carregado com sucesso.
+[17/05/2026 02:57:58] Ícone adicionado na bandeja.
+[17/05/2026 02:57:58] Loop do tray iniciado.
