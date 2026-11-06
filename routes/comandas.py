@@ -234,8 +234,11 @@ def excluir_item_comanda(item_id):
 @login_required_api
 def fechar_comanda(comanda_id):
     data = request.json or {}
-    pagamento = data.get("pagamento", "")
+    pagamento = (data.get("pagamento") or "").strip()
     observacao_extra = data.get("observacao", "").strip()
+
+    if not pagamento:
+        return jsonify({"erro": "Informe a forma de pagamento para fechar a comanda."}), 400
 
     conn = get_db()
     cursor = conn.cursor()
@@ -280,8 +283,8 @@ def fechar_comanda(comanda_id):
 
     cursor.execute("""
         INSERT INTO pedidos
-        (tipo, cliente, telefone, endereco, mesa, pagamento, observacao, total, criado_em, caixa_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (tipo, cliente, telefone, endereco, mesa, pagamento, observacao, total, criado_em, caixa_id, status, pago)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'em_preparo', 1)
     """, (
         "Salão",
         f"Mesa {comanda['mesa']}",

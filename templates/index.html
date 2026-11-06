@@ -23,6 +23,7 @@
 
       <nav class="menu">
         <button class="menu-btn active" data-page="pdv">PDV</button>
+        <button class="menu-btn" data-page="fila">Fila de Pedidos</button>
         <button class="menu-btn" data-page="caixa">Caixa</button>
         <button class="menu-btn" data-page="pedidos">Pedidos</button>
         <button class="menu-btn" data-page="cardapio">Cardápio</button>
@@ -173,6 +174,7 @@
 
               <label class="space-top">Forma de pagamento</label>
               <select id="paymentMethod">
+                <option value="" disabled selected>Selecione a forma de pagamento...</option>
                 <option value="Dinheiro">Dinheiro</option>
                 <option value="Cartão">Cartão</option>
                 <option value="Pix">Pix</option>
@@ -180,6 +182,14 @@
                 <option value="99Food">99Food</option>
                 <option value="Keeta">Keeta</option>
               </select>
+
+              <div class="paid-toggle-container">
+                <label class="paid-toggle-label" for="orderPaidToggle">
+                  <input type="checkbox" id="orderPaidToggle" class="paid-checkbox">
+                  <span class="paid-custom-check"></span>
+                  <span class="paid-text">Cliente já pagou</span>
+                </label>
+              </div>
 
               <div class="actions-row">
                 <button id="clearCart" class="btn danger">Limpar</button>
@@ -196,6 +206,66 @@
 
         </div>
 
+      </section>
+
+      <!-- FILA DE PEDIDOS -->
+      <section class="page" id="page-fila">
+        <div class="panel">
+          <div class="section-header queue-header">
+            <div>
+              <h3>Fila de Produção e Entrega</h3>
+              <p>Prioridade por ordem de chegada (mais antigos primeiro)</p>
+            </div>
+            <div class="queue-filters">
+              <label for="queueTypeFilter">Filtrar por tipo:</label>
+              <select id="queueTypeFilter">
+                <option value="todos">Todos os tipos</option>
+                <option value="Delivery">Delivery 🛵</option>
+                <option value="Balcão">Balcão 🧾</option>
+                <option value="Salão">Mesa / Salão 🍽️</option>
+              </select>
+              <button id="refreshQueueBtn" class="btn secondary">Atualizar Fila</button>
+            </div>
+          </div>
+
+          <div class="queue-kanban">
+            <!-- Coluna Em Preparo -->
+            <div class="queue-col col-preparo">
+              <div class="queue-col-header">
+                <span class="col-dot dot-preparo"></span>
+                <h4>Em Preparo</h4>
+                <span class="queue-count" id="countPreparo">0</span>
+              </div>
+              <div class="queue-cards" id="cardsPreparo">
+                <div class="hint">Nenhum pedido em preparo.</div>
+              </div>
+            </div>
+
+            <!-- Coluna Pronto -->
+            <div class="queue-col col-pronto">
+              <div class="queue-col-header">
+                <span class="col-dot dot-pronto"></span>
+                <h4>Pronto</h4>
+                <span class="queue-count" id="countPronto">0</span>
+              </div>
+              <div class="queue-cards" id="cardsPronto">
+                <div class="hint">Nenhum pedido pronto.</div>
+              </div>
+            </div>
+
+            <!-- Coluna Em Entrega -->
+            <div class="queue-col col-entrega">
+              <div class="queue-col-header">
+                <span class="col-dot dot-entrega"></span>
+                <h4>Em Entrega / Servido</h4>
+                <span class="queue-count" id="countEntrega">0</span>
+              </div>
+              <div class="queue-cards" id="cardsEntrega">
+                <div class="hint">Nenhum pedido em entrega.</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- CAIXA -->
@@ -431,6 +501,91 @@
       <div class="actions-row">
         <button id="confirmCancel" class="btn ghost">Cancelar</button>
         <button id="confirmOk" class="btn danger">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Editar Pedido -->
+  <div id="editOrderModal" class="modal hidden">
+    <div class="modal-card modal-large">
+      <div class="modal-header">
+        <h3 id="editOrderTitle">Editar Pedido</h3>
+        <button id="closeEditOrderModal" class="btn-close">&times;</button>
+      </div>
+
+      <input id="editOrderId" type="hidden">
+
+      <div class="form-grid">
+        <div>
+          <label>Status do Pedido</label>
+          <select id="editOrderStatus">
+            <option value="em_preparo">Em preparo</option>
+            <option value="pronto">Pronto</option>
+            <option value="em_entrega">Em entrega / Servido</option>
+            <option value="finalizado">Finalizado</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Forma de pagamento</label>
+          <select id="editOrderPayment">
+            <option value="Dinheiro">Dinheiro</option>
+            <option value="Cartão">Cartão</option>
+            <option value="Pix">Pix</option>
+            <option value="iFood">iFood</option>
+            <option value="99Food">99Food</option>
+            <option value="Keeta">Keeta</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Cliente</label>
+          <input id="editOrderClient" type="text" placeholder="Nome do cliente">
+        </div>
+
+        <div>
+          <label>Telefone</label>
+          <input id="editOrderPhone" type="text" placeholder="Telefone">
+        </div>
+
+        <div>
+          <label>Mesa</label>
+          <input id="editOrderMesa" type="text" placeholder="Mesa (opcional)">
+        </div>
+
+        <div style="display:flex; align-items:flex-end;">
+          <label class="paid-toggle-label" for="editOrderPaidToggle" style="margin-bottom:8px;">
+            <input type="checkbox" id="editOrderPaidToggle" class="paid-checkbox">
+            <span class="paid-custom-check"></span>
+            <span class="paid-text">Cliente já pagou</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group space-top">
+        <label>Endereço de entrega</label>
+        <input id="editOrderAddress" type="text" placeholder="Endereço">
+      </div>
+
+      <div class="form-group space-top">
+        <label>Observação</label>
+        <textarea id="editOrderObservation" rows="2" placeholder="Observações do pedido"></textarea>
+      </div>
+
+      <div class="space-top">
+        <div class="items-header">
+          <h4>Itens do Pedido</h4>
+          <span class="total-pill">Total: <strong id="editOrderTotalDisplay">R$ 0,00</strong></span>
+        </div>
+        <div id="editOrderItemsList" class="edit-items-list">
+          <!-- Itens dinâmicos -->
+        </div>
+      </div>
+
+      <div class="actions-row space-top">
+        <button id="cancelEditOrderBtn" class="btn ghost">Cancelar</button>
+        <button id="saveEditOrderBtn" class="btn success">Salvar Alterações</button>
       </div>
     </div>
   </div>

@@ -202,6 +202,11 @@ function setupNavigation() {
         await refreshTopCashStatus();
       }
 
+      if (page === "fila") {
+        updatePageTitle("Fila de Pedidos", "Acompanhe e altere o status de preparo e entrega");
+        await renderQueue();
+      }
+
       if (page === "caixa") {
         updatePageTitle("Caixa", "Abertura, fechamento, sangria e reforço");
         await renderCashPage();
@@ -241,6 +246,10 @@ function setupModes() {
       cart = [];
       clearOrderObservation();
       updateFinishButtonText();
+      document.getElementById("paymentMethod").value = "";
+      document.getElementById("borderSelect").value = "";
+      const paidToggle = document.getElementById("orderPaidToggle");
+      if (paidToggle) paidToggle.checked = false;
 
       document.getElementById("modeSelection").classList.add("hidden");
       document.getElementById("orderArea").classList.remove("hidden");
@@ -278,6 +287,10 @@ function setupModes() {
     cart = [];
     clearOrderObservation();
     updateFinishButtonText();
+    document.getElementById("paymentMethod").value = "";
+    document.getElementById("borderSelect").value = "";
+    const paidToggle = document.getElementById("orderPaidToggle");
+    if (paidToggle) paidToggle.checked = false;
 
     document.getElementById("modeSelection").classList.remove("hidden");
     document.getElementById("orderArea").classList.add("hidden");
@@ -316,14 +329,24 @@ function renderSelectors() {
     flavorTwo.appendChild(opt2);
   });
 
+  const defaultBorderOpt = document.createElement("option");
+  defaultBorderOpt.value = "";
+  defaultBorderOpt.textContent = "Sem borda (R$ 0,00)";
+  borderSelect.appendChild(defaultBorderOpt);
+
   produtos
     .filter(produto => produto.tipo === "borda")
     .forEach(produto => {
+      if (produto.nome.trim().toLowerCase() === "sem borda") {
+        return;
+      }
       const option = document.createElement("option");
       option.value = produto.id;
-      option.textContent = `${produto.nome} - ${money(produto.preco)}`;
+      option.textContent = `${produto.nome} (+${money(produto.preco)})`;
       borderSelect.appendChild(option);
     });
+
+  borderSelect.value = "";
 
   produtos
     .filter(produto => produto.tipo !== "borda")
@@ -366,12 +389,13 @@ function addPizzaToCart() {
   const flavorCount = document.getElementById("flavorCount").value;
   const flavorOneId = Number(document.getElementById("flavorOne").value);
   const flavorTwoId = Number(document.getElementById("flavorTwo").value);
-  const borderId = Number(document.getElementById("borderSelect").value);
+  const borderVal = document.getElementById("borderSelect").value;
+  const borderId = borderVal ? Number(borderVal) : 0;
   const quantidade = Number(document.getElementById("pizzaQty").value || 1);
 
   const pizzaOne = pizzas.find(pizza => pizza.id === flavorOneId);
   const pizzaTwo = pizzas.find(pizza => pizza.id === flavorTwoId);
-  const borda = produtos.find(produto => produto.id === borderId);
+  const borda = borderId ? produtos.find(produto => produto.id === borderId) : null;
 
   if (!pizzaOne) {
     showToast("Cadastre pelo menos uma pizza no cardápio.");
@@ -420,6 +444,9 @@ function addPizzaToCart() {
   });
 
   document.getElementById("pizzaQty").value = 1;
+  document.getElementById("borderSelect").value = "";
+  document.getElementById("flavorCount").value = "1";
+  updateSecondFlavorVisibility();
 
   renderCart();
   showToast("Pizza adicionada.");
@@ -509,6 +536,10 @@ async function clearCart() {
   if (!ok) return;
 
   cart = [];
+  document.getElementById("paymentMethod").value = "";
+  document.getElementById("borderSelect").value = "";
+  const paidToggle = document.getElementById("orderPaidToggle");
+  if (paidToggle) paidToggle.checked = false;
   renderCart();
   showToast("Carrinho limpo.");
 }
@@ -527,6 +558,15 @@ async function finishOrder() {
 
     const pagamento = document.getElementById("paymentMethod").value;
     const observacao = getOrderObservation();
+    const pago = document.getElementById("orderPaidToggle") ? document.getElementById("orderPaidToggle").checked : false;
+
+    if (currentMode === "delivery" || currentMode === "balcao") {
+      if (!pagamento) {
+        showToast("Por favor, selecione a forma de pagamento.");
+        document.getElementById("paymentMethod").focus();
+        return;
+      }
+    }
 
     if (currentMode === "delivery") {
       const cliente = document.getElementById("deliveryName").value.trim();
@@ -545,6 +585,7 @@ async function finishOrder() {
         endereco,
         mesa: "",
         pagamento,
+        pago,
         observacao,
         itens: cart
       });
@@ -552,6 +593,11 @@ async function finishOrder() {
       document.getElementById("deliveryName").value = "";
       document.getElementById("deliveryPhone").value = "";
       document.getElementById("deliveryAddress").value = "";
+      document.getElementById("paymentMethod").value = "";
+      document.getElementById("borderSelect").value = "";
+      if (document.getElementById("orderPaidToggle")) {
+        document.getElementById("orderPaidToggle").checked = false;
+      }
       clearOrderObservation();
 
       cart = [];
@@ -578,11 +624,17 @@ async function finishOrder() {
         endereco: "",
         mesa: "",
         pagamento,
+        pago,
         observacao,
         itens: cart
       });
 
       document.getElementById("balcaoName").value = "";
+      document.getElementById("paymentMethod").value = "";
+      document.getElementById("borderSelect").value = "";
+      if (document.getElementById("orderPaidToggle")) {
+        document.getElementById("orderPaidToggle").checked = false;
+      }
       clearOrderObservation();
 
       cart = [];
@@ -616,6 +668,7 @@ async function finishOrder() {
       );
 
       document.getElementById("mesaNumber").value = "";
+      document.getElementById("borderSelect").value = "";
       clearOrderObservation();
 
       cart = [];
@@ -737,15 +790,22 @@ async function excluirItemComanda(itemId, descricao) {
 
 async function closeTableTab(comandaId) {
   try {
-    const ok = await showConfirm("Deseja fechar esta comanda e salvar como venda?");
-    if (!ok) return;
+    let pagamento = document.getElementById("paymentMethod").value;
 
-    const pagamento = document.getElementById("paymentMethod").value;
+    if (!pagamento) {
+      showToast("Selecione a forma de pagamento no campo ao lado para fechar a mesa.");
+      document.getElementById("paymentMethod").focus();
+      return;
+    }
+
+    const ok = await showConfirm(`Deseja fechar esta comanda com pagamento em ${pagamento}?`);
+    if (!ok) return;
 
     const result = await apiPost(`/api/comandas/${comandaId}/fechar`, {
       pagamento
     });
 
+    document.getElementById("paymentMethod").value = "";
     await renderOpenTabs();
     await refreshTopCashStatus();
 
@@ -774,12 +834,30 @@ async function renderOrders() {
       ? `<div class="hint"><strong>Observação:</strong><br>${pedido.observacao}</div>`
       : "";
 
+    const status = pedido.status || "em_preparo";
+    const statusLabels = {
+      em_preparo: "Em preparo",
+      pronto: "Pronto",
+      em_entrega: "Em entrega / Servido",
+      finalizado: "Finalizado",
+      cancelado: "Cancelado"
+    };
+    const statusClass = status;
+
+    const pagoBadge = pedido.pago
+      ? `<button class="badge-pago btn-toggle-pago" onclick="alternarPagoPedido(${pedido.id}, false)" title="Clique para desmarcar como pago">✓ PAGO</button>`
+      : `<button class="badge-nao-pago btn-toggle-pago" onclick="alternarPagoPedido(${pedido.id}, true)" title="Clique para marcar como pago">✕ A COBRAR</button>`;
+
     const div = document.createElement("div");
     div.className = "order-item";
 
     div.innerHTML = `
       <header>
-        <strong>#${pedido.id} - ${pedido.tipo} - ${pedido.cliente || "Cliente"}</strong>
+        <div>
+          <strong>#${pedido.id} - ${pedido.tipo} - ${pedido.cliente || "Cliente"}</strong>
+          <span class="badge-status ${statusClass}" style="margin-left: 8px;">${statusLabels[status] || status}</span>
+          <span style="margin-left: 8px;">${pagoBadge}</span>
+        </div>
         <strong>${money(pedido.total)}</strong>
       </header>
 
@@ -797,11 +875,329 @@ async function renderOrders() {
 
       <div class="admin-actions">
         <button class="btn secondary" onclick="openPrintWindow(${pedido.id})">Imprimir cupom</button>
+        <button class="btn ghost" onclick="abrirEditarPedido(${pedido.id})">Editar pedido</button>
+        <button class="btn danger" onclick="excluirPedido(${pedido.id})">Excluir pedido</button>
       </div>
     `;
 
     list.appendChild(div);
   });
+}
+
+let currentEditingOrder = null;
+
+async function excluirPedido(pedidoId) {
+  try {
+    const ok = await showConfirm(`Tem certeza que deseja excluir o Pedido #${pedidoId}?\nEsta ação cancelará a venda e atualizará o caixa.`);
+    if (!ok) return;
+
+    await apiDelete(`/api/pedidos/${pedidoId}`);
+
+    await renderOrders();
+    await refreshTopCashStatus();
+    await renderReport();
+    showToast(`Pedido #${pedidoId} excluído com sucesso.`);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function abrirEditarPedido(pedidoId) {
+  try {
+    const pedido = await apiGet(`/api/pedidos/${pedidoId}`);
+    currentEditingOrder = JSON.parse(JSON.stringify(pedido));
+
+    document.getElementById("editOrderId").value = pedido.id;
+    document.getElementById("editOrderTitle").textContent = `Editar Pedido #${pedido.id} (${pedido.tipo})`;
+    document.getElementById("editOrderStatus").value = pedido.status || "em_preparo";
+    document.getElementById("editOrderPayment").value = pedido.pagamento || "Dinheiro";
+    if (document.getElementById("editOrderPaidToggle")) {
+      document.getElementById("editOrderPaidToggle").checked = Boolean(pedido.pago);
+    }
+    document.getElementById("editOrderClient").value = pedido.cliente || "";
+    document.getElementById("editOrderPhone").value = pedido.telefone || "";
+    document.getElementById("editOrderMesa").value = pedido.mesa || "";
+    document.getElementById("editOrderAddress").value = pedido.endereco || "";
+    document.getElementById("editOrderObservation").value = pedido.observacao || "";
+
+    renderEditOrderItems();
+
+    document.getElementById("editOrderModal").classList.remove("hidden");
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+function renderEditOrderItems() {
+  const list = document.getElementById("editOrderItemsList");
+  if (!currentEditingOrder || !list) return;
+
+  list.innerHTML = "";
+
+  let totalGeral = 0;
+
+  currentEditingOrder.itens.forEach((item, index) => {
+    const precoUnitario = Number(item.preco_unitario || 0);
+    const quantidade = Number(item.quantidade || 1);
+    const itemTotal = precoUnitario * quantidade;
+    item.total = itemTotal;
+    totalGeral += itemTotal;
+
+    const row = document.createElement("div");
+    row.className = "edit-item-row";
+    row.innerHTML = `
+      <div class="edit-item-desc">${item.descricao}</div>
+      <input type="number" min="1" class="edit-item-qty" value="${quantidade}" onchange="updateEditItemQty(${index}, this.value)">
+      <div class="edit-item-total">${money(itemTotal)}</div>
+      <button type="button" class="btn-remove-item" onclick="removeEditItem(${index})" title="Remover item">✕</button>
+    `;
+    list.appendChild(row);
+  });
+
+  document.getElementById("editOrderTotalDisplay").textContent = money(totalGeral);
+}
+
+function updateEditItemQty(index, newQty) {
+  const qty = parseInt(newQty, 10);
+  if (!qty || qty <= 0) {
+    showToast("Quantidade deve ser maior que zero.");
+    renderEditOrderItems();
+    return;
+  }
+  if (currentEditingOrder && currentEditingOrder.itens[index]) {
+    currentEditingOrder.itens[index].quantidade = qty;
+    renderEditOrderItems();
+  }
+}
+
+function removeEditItem(index) {
+  if (currentEditingOrder && currentEditingOrder.itens) {
+    if (currentEditingOrder.itens.length <= 1) {
+      showToast("O pedido precisa ter pelo menos um item. Para cancelar o pedido todo, use 'Excluir pedido'.");
+      return;
+    }
+    currentEditingOrder.itens.splice(index, 1);
+    renderEditOrderItems();
+  }
+}
+
+function fecharEditarPedido() {
+  currentEditingOrder = null;
+  const modal = document.getElementById("editOrderModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+async function salvarEdicaoPedido() {
+  if (!currentEditingOrder) return;
+
+  const pedidoId = document.getElementById("editOrderId").value;
+  const status = document.getElementById("editOrderStatus").value;
+  const pagamento = document.getElementById("editOrderPayment").value.trim();
+  const pago = document.getElementById("editOrderPaidToggle") ? document.getElementById("editOrderPaidToggle").checked : false;
+  const cliente = document.getElementById("editOrderClient").value.trim();
+  const telefone = document.getElementById("editOrderPhone").value.trim();
+  const mesa = document.getElementById("editOrderMesa").value.trim();
+  const endereco = document.getElementById("editOrderAddress").value.trim();
+  const observacao = document.getElementById("editOrderObservation").value.trim();
+
+  if (!pagamento) {
+    showToast("Selecione a forma de pagamento.");
+    return;
+  }
+
+  if (!currentEditingOrder.itens || currentEditingOrder.itens.length === 0) {
+    showToast("O pedido deve ter pelo menos um item.");
+    return;
+  }
+
+  try {
+    await apiPut(`/api/pedidos/${pedidoId}`, {
+      status,
+      pagamento,
+      pago,
+      cliente,
+      telefone,
+      mesa,
+      endereco,
+      observacao,
+      itens: currentEditingOrder.itens
+    });
+
+    fecharEditarPedido();
+    await renderOrders();
+    await renderQueue();
+    await refreshTopCashStatus();
+    await renderReport();
+    showToast(`Pedido #${pedidoId} alterado com sucesso!`);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// -------------------------------------------------------------
+// FILA DE PEDIDOS (KANBAN & PRIORIDADE POR CHEGADA)
+// -------------------------------------------------------------
+async function renderQueue() {
+  const containerPreparo = document.getElementById("cardsPreparo");
+  const containerPronto = document.getElementById("cardsPronto");
+  const containerEntrega = document.getElementById("cardsEntrega");
+
+  if (!containerPreparo) return;
+
+  const pedidos = await apiGet("/api/fila");
+  const tipoFiltro = document.getElementById("queueTypeFilter") ? document.getElementById("queueTypeFilter").value : "todos";
+
+  let filtrados = pedidos;
+  if (tipoFiltro !== "todos") {
+    filtrados = pedidos.filter(p => p.tipo === tipoFiltro);
+  }
+
+  const emPreparo = filtrados.filter(p => p.status === "em_preparo");
+  const pronto = filtrados.filter(p => p.status === "pronto");
+  const emEntrega = filtrados.filter(p => p.status === "em_entrega");
+
+  document.getElementById("countPreparo").textContent = emPreparo.length;
+  document.getElementById("countPronto").textContent = pronto.length;
+  document.getElementById("countEntrega").textContent = emEntrega.length;
+
+  containerPreparo.innerHTML = emPreparo.length === 0
+    ? `<div class="hint">Nenhum pedido em preparo.</div>`
+    : emPreparo.map(p => createQueueCardHtml(p)).join("");
+
+  containerPronto.innerHTML = pronto.length === 0
+    ? `<div class="hint">Nenhum pedido pronto.</div>`
+    : pronto.map(p => createQueueCardHtml(p)).join("");
+
+  containerEntrega.innerHTML = emEntrega.length === 0
+    ? `<div class="hint">Nenhum pedido em entrega.</div>`
+    : emEntrega.map(p => createQueueCardHtml(p)).join("");
+}
+
+function createQueueCardHtml(pedido) {
+  const tipoClasses = {
+    "Delivery": "badge-delivery",
+    "Balcão": "badge-balcao",
+    "Salão": "badge-salao"
+  };
+  const tipoIcones = {
+    "Delivery": "🛵",
+    "Balcão": "🧾",
+    "Salão": "🍽️"
+  };
+
+  const tipoBadgeClass = tipoClasses[pedido.tipo] || "badge-balcao";
+  const tipoIcone = tipoIcones[pedido.tipo] || "📦";
+
+  let acoesHtml = "";
+  if (pedido.status === "em_preparo") {
+    acoesHtml = `
+      <button class="btn success" onclick="mudarStatusPedido(${pedido.id}, 'pronto')"> Marcar Pronto</button>
+      <button class="btn secondary" onclick="openPrintWindow(${pedido.id})"> Cupom</button>
+      <button class="btn ghost" onclick="abrirEditarPedido(${pedido.id})"> Editar</button>
+      <button class="btn danger" onclick="cancelarPedidoFila(${pedido.id})"> Cancelar</button>
+    `;
+  } else if (pedido.status === "pronto") {
+    const btnTextoEntrega = pedido.tipo === "Delivery" ? " Saiu p/ Entrega" : " Servir / Entregar";
+    acoesHtml = `
+      <button class="btn primary" onclick="mudarStatusPedido(${pedido.id}, 'em_entrega')">${btnTextoEntrega}</button>
+      <button class="btn success" onclick="mudarStatusPedido(${pedido.id}, 'finalizado')"> Finalizar</button>
+      <button class="btn ghost" onclick="mudarStatusPedido(${pedido.id}, 'em_preparo')"> Voltar Preparo</button>
+      <button class="btn danger" onclick="cancelarPedidoFila(${pedido.id})"> Cancelar</button>
+    `;
+  } else if (pedido.status === "em_entrega") {
+    acoesHtml = `
+      <button class="btn success" onclick="mudarStatusPedido(${pedido.id}, 'finalizado')"> Entregue / Finalizar</button>
+      <button class="btn ghost" onclick="mudarStatusPedido(${pedido.id}, 'pronto')"> Voltar Pronto</button>
+      <button class="btn danger" onclick="cancelarPedidoFila(${pedido.id})"> Cancelar</button>
+    `;
+  }
+
+  const horaFormatada = pedido.criado_em ? pedido.criado_em.split(" ")[1] || pedido.criado_em : "";
+
+  const pagoBadge = pedido.pago
+    ? `<button class="badge-pago btn-toggle-pago" onclick="alternarPagoPedido(${pedido.id}, false)" title="Clique para desmarcar como pago">✓ PAGO</button>`
+    : `<button class="badge-nao-pago btn-toggle-pago" onclick="alternarPagoPedido(${pedido.id}, true)" title="Clique para marcar como pago">✕ A COBRAR</button>`;
+
+  return `
+    <div class="queue-card" data-id="${pedido.id}">
+      <div class="queue-card-top">
+        <div>
+          <span class="queue-badge-tipo ${tipoBadgeClass}">${tipoIcone} ${pedido.tipo}</span>
+          ${pagoBadge}
+        </div>
+        <span class="queue-time">🕒 ${horaFormatada} (#${pedido.id})</span>
+      </div>
+
+      <div class="queue-card-client">
+        ${pedido.cliente || (pedido.mesa ? `Mesa ${pedido.mesa}` : "Cliente")}
+      </div>
+
+      ${pedido.telefone || pedido.endereco ? `
+        <div class="queue-card-meta">
+          ${pedido.telefone ? `📞 ${pedido.telefone}` : ""}
+          ${pedido.endereco ? `<br>📍 ${pedido.endereco}` : ""}
+        </div>
+      ` : ""}
+
+      <ul class="queue-card-items">
+        ${(pedido.itens || []).map(i => `<li><strong>${i.quantidade}x</strong> ${i.descricao}</li>`).join("")}
+      </ul>
+
+      ${pedido.observacao ? `
+        <div class="queue-card-obs">
+          ⚠️ ${pedido.observacao}
+        </div>
+      ` : ""}
+
+      <div class="queue-card-actions">
+        ${acoesHtml}
+      </div>
+    </div>
+  `;
+}
+
+async function mudarStatusPedido(pedidoId, novoStatus) {
+  try {
+    const rotulos = {
+      em_preparo: "Em preparo",
+      pronto: "Pronto",
+      em_entrega: "Em entrega / Servido",
+      finalizado: "Finalizado",
+      cancelado: "Cancelado"
+    };
+
+    await apiPost(`/api/pedidos/${pedidoId}/status`, { status: novoStatus });
+    await renderQueue();
+    await renderOrders();
+    showToast(`Pedido #${pedidoId} alterado para "${rotulos[novoStatus]}".`);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function cancelarPedidoFila(pedidoId) {
+  try {
+    const ok = await showConfirm(`Deseja cancelar o Pedido #${pedidoId}?\nEle sairá da fila de preparo.`);
+    if (!ok) return;
+
+    await apiPost(`/api/pedidos/${pedidoId}/status`, { status: "cancelado" });
+    await renderQueue();
+    await renderOrders();
+    showToast(`Pedido #${pedidoId} foi cancelado.`);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function alternarPagoPedido(pedidoId, novoPago) {
+  try {
+    await apiPost(`/api/pedidos/${pedidoId}/pago`, { pago: novoPago });
+    await renderQueue();
+    await renderOrders();
+    showToast(novoPago ? `Pedido #${pedidoId} marcado como PAGO.` : `Pedido #${pedidoId} marcado como A COBRAR.`);
+  } catch (error) {
+    console.error(error);
+  }
 }
 
 function renderAdminLists() {
@@ -1328,6 +1724,19 @@ function setupEvents() {
   document.getElementById("createBackup").addEventListener("click", createBackup);
   document.getElementById("downloadDb").addEventListener("click", downloadDb);
   document.getElementById("resetSystem").addEventListener("click", resetSystem);
+
+  document.getElementById("closeEditOrderModal").addEventListener("click", fecharEditarPedido);
+  document.getElementById("cancelEditOrderBtn").addEventListener("click", fecharEditarPedido);
+  document.getElementById("saveEditOrderBtn").addEventListener("click", salvarEdicaoPedido);
+
+  const queueFilter = document.getElementById("queueTypeFilter");
+  if (queueFilter) {
+    queueFilter.addEventListener("change", renderQueue);
+  }
+  const refreshQueueBtn = document.getElementById("refreshQueueBtn");
+  if (refreshQueueBtn) {
+    refreshQueueBtn.addEventListener("click", renderQueue);
+  }
 }
 
 async function init() {

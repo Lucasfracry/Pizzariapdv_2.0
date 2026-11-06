@@ -143,7 +143,9 @@ def init_db():
             observacao TEXT,
             total REAL NOT NULL,
             criado_em TEXT NOT NULL,
-            caixa_id INTEGER
+            caixa_id INTEGER,
+            status TEXT NOT NULL DEFAULT 'em_preparo',
+            pago INTEGER NOT NULL DEFAULT 0
         )
     """)
 
@@ -189,6 +191,12 @@ def init_db():
 
     if not column_exists(conn, "pedidos", "observacao"):
         cursor.execute("ALTER TABLE pedidos ADD COLUMN observacao TEXT")
+
+    if not column_exists(conn, "pedidos", "status"):
+        cursor.execute("ALTER TABLE pedidos ADD COLUMN status TEXT NOT NULL DEFAULT 'em_preparo'")
+
+    if not column_exists(conn, "pedidos", "pago"):
+        cursor.execute("ALTER TABLE pedidos ADD COLUMN pago INTEGER NOT NULL DEFAULT 0")
 
     if not column_exists(conn, "comandas", "observacao"):
         cursor.execute("ALTER TABLE comandas ADD COLUMN observacao TEXT")
